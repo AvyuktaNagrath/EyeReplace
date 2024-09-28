@@ -173,6 +173,10 @@ function fetchWikipediaContent(pageTitle) {
             const parser = new DOMParser();
             const parsedHtml = parser.parseFromString(htmlCode, "text/html");
 
+            // Remove annotation elements (sup tags with reference class)
+            const annotations = parsedHtml.querySelectorAll("sup.reference");
+            annotations.forEach(annotation => annotation.remove());
+
             const contentElements = parsedHtml.querySelectorAll("p, h1, h2, h3, h4, h5, h6");
 
             console.log("Content elements fetched from Wikipedia:", contentElements);
@@ -183,6 +187,7 @@ function fetchWikipediaContent(pageTitle) {
             console.error("Error fetching Wikipedia content:", error);
         });
 }
+
 
 // Function to fetch and modify non-Wikipedia content
 function fetchNonWikipediaContent() {
