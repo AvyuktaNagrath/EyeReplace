@@ -1,6 +1,80 @@
 // Debugging: Log that the content script has loaded
 console.log("Content script loaded and ready to receive messages.");
 
+// Now that the Socket.IO client is self-hosted, we can directly create the Socket.IO connection
+const socket = io('http://143.215.63.97:5000');
+
+// Event listener for WebSocket connection
+socket.on('connect', function () {
+    console.log("Socket.IO connection established with Flask backend.");
+});
+
+// Debug: Listen for all events coming from the server
+socket.onAny((eventName, data) => {
+    console.log(`Received event: ${eventName}`, data);
+});
+
+// Event listener for receiving gaze data from the Flask backend
+socket.on('screen_gaze_data', function (data) {
+    if (data.x !== undefined && data.y !== undefined) {
+        console.log(`Received Screen Gaze: Coordinates: (${data.x}, ${data.y})`);
+
+        // Project red dot on the screen using these coordinates
+        projectRedDot(data.x, data.y);
+    }
+});
+
+// Event listener for WebSocket errors
+socket.on('connect_error', function (error) {
+    console.error("Socket.IO connection error:", error);
+});
+
+// Event listener for WebSocket closing
+socket.on('disconnect', function () {
+    console.log("Socket.IO connection closed.");
+});
+
+// Function to project red dot using screen gaze coordinates
+function projectRedDot(x, y) {
+    console.log(`Projecting red dot at coordinates: (${x}, ${y})`);  // Debugging
+
+    // Remove old red dot if it exists
+    const oldDot = document.getElementById('red-dot');
+    if (oldDot) {
+        oldDot.remove();
+    }
+
+    // Create new red dot
+    const dot = document.createElement('div');
+    dot.id = 'red-dot';
+    dot.style.position = 'absolute';
+    dot.style.left = `${x + window.scrollX}px`;  // Adjust for scrolling position
+    dot.style.top = `${y + window.scrollY}px`;   // Adjust for scrolling position
+    dot.style.width = '10px';
+    dot.style.height = '10px';
+    dot.style.backgroundColor = 'red';
+    dot.style.borderRadius = '50%';
+    dot.style.zIndex = 9999;
+    dot.style.pointerEvents = 'none';
+    document.body.appendChild(dot);
+
+    console.log("Red dot projected successfully.");  // Debugging
+}
+
+// Messaging listener to handle the popup button clicks
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'startEyeOptimize') {
+        storeOriginalStylesAndContent();
+        fetchNonWikipediaContent();
+        sendResponse({ status: 'Text optimized and scroll-based navigation added.' });
+    }
+
+    if (message.action === 'resetPage') {
+        restoreOriginalStylesAndContent(); 
+        sendResponse({ status: 'Page reset to original state.' });
+    }
+});
+
 // Check if variables are already defined and persist them globally
 if (typeof originalStyles === 'undefined') {
     var originalStyles = new Map();  
@@ -12,11 +86,8 @@ if (typeof originalBodyContent === 'undefined') {
 
 // Store the original styles and content before modifying them
 function storeOriginalStylesAndContent() {
-    console.log("Storing original styles and content...");
-
     if (!originalBodyContent) {
         originalBodyContent = document.body.innerHTML; // Save the original body content
-        console.log("Original body content stored:", originalBodyContent);  // Debugging: Log the stored content
     }
 
     const elements = document.querySelectorAll('*');
@@ -31,16 +102,12 @@ function storeOriginalStylesAndContent() {
             });
         }
     });
-    console.log("Original styles stored:", originalStyles);  // Debugging: Log the stored styles
 }
 
 // Restore the original styles and content
 function restoreOriginalStylesAndContent() {
-    console.log("Restoring original styles and content...");
-
     if (originalBodyContent) {
         document.body.innerHTML = originalBodyContent; // Restore the original HTML content
-        console.log("Original body content restored.");  // Debugging: Log the restored content
     }
 
     originalStyles.forEach((styles, el) => {
@@ -53,16 +120,11 @@ function restoreOriginalStylesAndContent() {
 
     originalStyles.clear();
     originalBodyContent = '';
-
     document.body.style.overflow = 'scroll'; // Re-enable normal scroll
-
-    console.log("Original styles and content restored.");
 }
 
 // Function to dynamically adjust text size and layout based on the viewport
 function adjustTextLayout(container, scaleFactor = 1) {
-    console.log("Adjusting text layout...");
-
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
 
@@ -106,17 +168,9 @@ function styleHeaders(header) {
 
 // Function to modify text content while maintaining the correct order of headers and paragraphs
 function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
-    console.log("Modifying text content while maintaining order...");
-
-    if (!contentElements || contentElements.length === 0) {
-        console.error("No content elements found for modification.");
-        return;
-    }
-
     const container = document.createElement('div');
     container.id = 'textContainer';
     
-    // Apply a gradient background to assist in reading flow
     container.style.color = '#333333';  // Dark grey text for readability
     container.style.fontFamily = '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'; // Clean font family
     container.style.borderRadius = '0';  // No rounded corners to span the full screen
@@ -125,7 +179,6 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
     container.style.padding = '0 20px';  // Add horizontal padding for readability
     container.style.lineHeight = '1.6';  // Increased line height for readability
 
-    // Iterate over all elements (headers, paragraphs) and maintain order
     contentElements.forEach(element => {
         const tagName = element.tagName.toLowerCase();
         const newElement = document.createElement(tagName);
@@ -153,57 +206,8 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
     document.body.style.overflow = 'scroll'; // Re-enable scrolling
 }
 
-// Function to fetch and process content for both Wikipedia and non-Wikipedia pages
-function fetchAndModifyContent() {
-    console.log("Fetching and modifying content...");
-
-    const currentURL = window.location.href;
-    const pageTitle = extractWikipediaTitleFromURL(currentURL);
-
-    if (pageTitle) {
-        fetchWikipediaContent(pageTitle);  // Wikipedia content fetching and modification
-    } else {
-        fetchNonWikipediaContent();  // For non-Wikipedia content
-    }
-}
-
-// Function to fetch Wikipedia content using the Wikipedia API and apply uniform formatting
-function fetchWikipediaContent(pageTitle) {
-    console.log(`Fetching content for Wikipedia page: ${pageTitle}`);
-    const url = `https://en.wikipedia.org/w/api.php?action=parse&format=json&origin=*&page=${encodeURIComponent(pageTitle)}`;
-
-    fetch(url)
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(response) {
-            if (response.error) {
-                console.error("Error from Wikipedia API:", response.error);
-                return;
-            }
-            const htmlCode = response["parse"]["text"]["*"];
-            const parser = new DOMParser();
-            const parsedHtml = parser.parseFromString(htmlCode, "text/html");
-
-            // Remove annotation elements (sup tags with reference class)
-            const annotations = parsedHtml.querySelectorAll("sup.reference");
-            annotations.forEach(annotation => annotation.remove());
-
-            const contentElements = parsedHtml.querySelectorAll("p, h1, h2, h3, h4, h5, h6");
-
-            console.log("Content elements fetched from Wikipedia:", contentElements);
-
-            modifyTextContentInOrder(contentElements, 1); // Maintain order for Wikipedia
-        })
-        .catch(function(error) {
-            console.error("Error fetching Wikipedia content:", error);
-        });
-}
-
 // Function to fetch and modify non-Wikipedia content
 function fetchNonWikipediaContent() {
-    console.log("Fetching non-Wikipedia content...");
-
     const contentElements = document.querySelectorAll('p, h1, h2, h3, h4, h5, h6');
 
     if (contentElements.length === 0) {
@@ -211,37 +215,5 @@ function fetchNonWikipediaContent() {
         return;
     }
 
-    console.log("Content elements found in non-Wikipedia page:", contentElements);
-
     modifyTextContentInOrder(contentElements, 1); // Maintain order for non-Wikipedia pages
 }
-
-// Function to extract the Wikipedia page title from the current tab's URL
-function extractWikipediaTitleFromURL(url) {
-    const regex = /wikipedia\.org\/wiki\/([^#?]+)/;
-    const match = url.match(regex);
-    if (match && match[1]) {
-        return decodeURIComponent(match[1].replace(/_/g, ' '));
-    }
-    return null;
-}
-
-// Listener for the message from the popup to trigger the function
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("Message received from popup:", message);
-
-    if (message.action === 'startEyeOptimize') {
-        console.log("Starting eye-optimized view");
-
-        storeOriginalStylesAndContent();
-        fetchAndModifyContent();
-
-        sendResponse({ status: 'Text optimized and scroll-based navigation added.' });
-    }
-
-    if (message.action === 'resetPage') {
-        console.log("Reset button clicked, restoring original styles...");
-        restoreOriginalStylesAndContent(); 
-        sendResponse({ status: 'Page reset to original state.' });
-    }
-});
