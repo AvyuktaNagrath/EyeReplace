@@ -1,12 +1,13 @@
 # EyeReplace
 HackGT 11 project developed by Avyukta Nagrath, Garv Jain, Aayush Patel, Vidhi Kulkarni. All developers are pursuing Bachelor's of Science degrees in Computer Science at the Georgia Institute of Technology.
 
+# Project Details
+1. Developed for Python 3.12.6, backwards compatibility should work up to 3.6 but can not guarantee
+
 # Prerequisite Requirements
-1. Must have Beam SDK installed and running with purchased key
-2. Must have Python 3.6 for version, no backwards or forwards compatibility currently with Beam SDK
-3. Calibration: Run the calibration procedure within the Beam application at least once.
-4. Add <YOUR_BEAM_SDK_INSTALLATION_FOLDER>/API/python to your PYTHONPATH.
-5. Must have functional webcam
+1. Must have Beam app installed and running with purchased key
+2. Calibration: Run the calibration procedure within the Beam application at least once.
+3. Must have functional webcam
 
 # Setup
 
