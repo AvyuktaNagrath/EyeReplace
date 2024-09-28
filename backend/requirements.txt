@@ -2,3 +2,4 @@ Flask
 numpy
 beam-eye-tracker
 openai
+Flask-SocketIO
