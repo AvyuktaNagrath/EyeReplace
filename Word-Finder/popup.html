@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      width: 200px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    input {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    button {
+      width: 100%;
+      padding: 5px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+    }
+    td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h3>Enter Coordinates</h3>
+  <input type="number" id="x-coordinate" placeholder="X coordinate">
+  <input type="number" id="y-coordinate" placeholder="Y coordinate">
+  <button id="project-dot">Project Red Dot</button>
+
+  <table id="result-table">
+    <tr>
+      <td>Detected Word</td>
+    </tr>
+    <tr>
+      <td id="detected-word">None</td>
+    </tr>
+  </table>
+
+  <script src="popup.js"></script>
+</body>
+</html>
