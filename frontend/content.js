@@ -9,7 +9,12 @@ socket.on('connect', function () {
     console.log("Socket.IO connection established with Flask backend.");
 });
 
-// Event listener for receiving messages from the Flask backend
+// Debug: Listen for all events coming from the server
+socket.onAny((eventName, data) => {
+    console.log(`Received event: ${eventName}`, data);
+});
+
+// Event listener for receiving gaze data from the Flask backend
 socket.on('screen_gaze_data', function (data) {
     if (data.x !== undefined && data.y !== undefined) {
         console.log(`Received Screen Gaze: Coordinates: (${data.x}, ${data.y})`);
@@ -31,6 +36,8 @@ socket.on('disconnect', function () {
 
 // Function to project red dot using screen gaze coordinates
 function projectRedDot(x, y) {
+    console.log(`Projecting red dot at coordinates: (${x}, ${y})`);  // Debugging
+
     // Remove old red dot if it exists
     const oldDot = document.getElementById('red-dot');
     if (oldDot) {
@@ -42,7 +49,7 @@ function projectRedDot(x, y) {
     dot.id = 'red-dot';
     dot.style.position = 'absolute';
     dot.style.left = `${x + window.scrollX}px`;  // Adjust for scrolling position
-    dot.style.top = `${y + window.scrollY}px`;  // Adjust for scrolling position
+    dot.style.top = `${y + window.scrollY}px`;   // Adjust for scrolling position
     dot.style.width = '10px';
     dot.style.height = '10px';
     dot.style.backgroundColor = 'red';
@@ -50,23 +57,19 @@ function projectRedDot(x, y) {
     dot.style.zIndex = 9999;
     dot.style.pointerEvents = 'none';
     document.body.appendChild(dot);
+
+    console.log("Red dot projected successfully.");  // Debugging
 }
 
 // Messaging listener to handle the popup button clicks
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("Message received from popup:", message);
-
     if (message.action === 'startEyeOptimize') {
-        console.log("Starting eye-optimized view");
-
         storeOriginalStylesAndContent();
         fetchNonWikipediaContent();
-
         sendResponse({ status: 'Text optimized and scroll-based navigation added.' });
     }
 
     if (message.action === 'resetPage') {
-        console.log("Reset button clicked, restoring original styles...");
         restoreOriginalStylesAndContent(); 
         sendResponse({ status: 'Page reset to original state.' });
     }
@@ -83,11 +86,8 @@ if (typeof originalBodyContent === 'undefined') {
 
 // Store the original styles and content before modifying them
 function storeOriginalStylesAndContent() {
-    console.log("Storing original styles and content...");
-
     if (!originalBodyContent) {
         originalBodyContent = document.body.innerHTML; // Save the original body content
-        console.log("Original body content stored:", originalBodyContent);  // Debugging: Log the stored content
     }
 
     const elements = document.querySelectorAll('*');
@@ -102,16 +102,12 @@ function storeOriginalStylesAndContent() {
             });
         }
     });
-    console.log("Original styles stored:", originalStyles);  // Debugging: Log the stored styles
 }
 
 // Restore the original styles and content
 function restoreOriginalStylesAndContent() {
-    console.log("Restoring original styles and content...");
-
     if (originalBodyContent) {
         document.body.innerHTML = originalBodyContent; // Restore the original HTML content
-        console.log("Original body content restored.");  // Debugging: Log the restored content
     }
 
     originalStyles.forEach((styles, el) => {
@@ -124,16 +120,11 @@ function restoreOriginalStylesAndContent() {
 
     originalStyles.clear();
     originalBodyContent = '';
-
     document.body.style.overflow = 'scroll'; // Re-enable normal scroll
-
-    console.log("Original styles and content restored.");
 }
 
 // Function to dynamically adjust text size and layout based on the viewport
 function adjustTextLayout(container, scaleFactor = 1) {
-    console.log("Adjusting text layout...");
-
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
 
@@ -177,17 +168,9 @@ function styleHeaders(header) {
 
 // Function to modify text content while maintaining the correct order of headers and paragraphs
 function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
-    console.log("Modifying text content while maintaining order...");
-
-    if (!contentElements || contentElements.length === 0) {
-        console.error("No content elements found for modification.");
-        return;
-    }
-
     const container = document.createElement('div');
     container.id = 'textContainer';
     
-    // Apply a gradient background to assist in reading flow
     container.style.color = '#333333';  // Dark grey text for readability
     container.style.fontFamily = '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'; // Clean font family
     container.style.borderRadius = '0';  // No rounded corners to span the full screen
@@ -196,7 +179,6 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
     container.style.padding = '0 20px';  // Add horizontal padding for readability
     container.style.lineHeight = '1.6';  // Increased line height for readability
 
-    // Iterate over all elements (headers, paragraphs) and maintain order
     contentElements.forEach(element => {
         const tagName = element.tagName.toLowerCase();
         const newElement = document.createElement(tagName);
@@ -226,16 +208,12 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
 
 // Function to fetch and modify non-Wikipedia content
 function fetchNonWikipediaContent() {
-    console.log("Fetching non-Wikipedia content...");
-
     const contentElements = document.querySelectorAll('p, h1, h2, h3, h4, h5, h6');
 
     if (contentElements.length === 0) {
         console.error("No paragraphs or headers found to modify on the non-Wikipedia page.");
         return;
     }
-
-    console.log("Content elements found in non-Wikipedia page:", contentElements);
 
     modifyTextContentInOrder(contentElements, 1); // Maintain order for non-Wikipedia pages
 }
