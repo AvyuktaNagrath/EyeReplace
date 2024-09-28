@@ -66,11 +66,11 @@ function adjustTextLayout(container, scaleFactor = 1) {
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
 
-    const wordsPerRow = 7;  // Aim for 7-10 words per row
-    const rowsPerPage = 7;  // Aim for 6-8 rows per viewport
+    const wordsPerRow = 8;  // Aim for 8 words per row for a more readable layout
+    const rowsPerPage = 8;  // Aim for 8 rows per viewport for better spacing
 
     const averageWordLength = 6;
-    const fontSizeBasedOnWidth = viewportWidth / (wordsPerRow * averageWordLength);
+    const fontSizeBasedOnWidth = (viewportWidth - 40) / (wordsPerRow * averageWordLength);  // Adjust for padding
 
     const idealRowHeight = viewportHeight / rowsPerPage;
     const fontSizeBasedOnHeight = idealRowHeight * 0.8;
@@ -79,24 +79,29 @@ function adjustTextLayout(container, scaleFactor = 1) {
 
     container.style.fontSize = `${optimalFontSize}px`;
     container.style.lineHeight = `${idealRowHeight}px`;
-    container.style.padding = '10px'; // Add some padding for better readability
+    container.style.padding = '0 20px'; // Add horizontal padding for readability
 }
 
-// Function to style headers and subheaders
+// Function to style headers with blue accents
 function styleHeaders(header) {
     const headerTag = header.tagName.toLowerCase();
     const headerScaleFactor = {
-        'h1': 1.8,
-        'h2': 1.6,
-        'h3': 1.4,
-        'h4': 1.2,
-        'h5': 1.1,
-        'h6': 1.05
+        'h1': 2.0,
+        'h2': 1.8,
+        'h3': 1.6,
+        'h4': 1.4,
+        'h5': 1.2,
+        'h6': 1.1
     }[headerTag] || 1; // Adjust sizes based on header level
 
+    // Apply education theme styles
     header.style.fontSize = `${parseFloat(header.style.fontSize) * headerScaleFactor}px`;
+    header.style.color = '#0056b3';  // Blue accents for headers
     header.style.fontWeight = 'bold';
-    header.style.marginBottom = '20px'; // Add margin for line break effect after headers
+    header.style.borderBottom = '2px solid #0056b3';  // Blue underline for headers
+    header.style.paddingBottom = '10px';  // Padding below the header
+    header.style.marginTop = '40px';  // Add spacing above headers
+    header.style.marginBottom = '20px';  // Add spacing below headers
 }
 
 // Function to modify text content while maintaining the correct order of headers and paragraphs
@@ -110,9 +115,15 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
 
     const container = document.createElement('div');
     container.id = 'textContainer';
-    container.style.backgroundColor = '#f9f9f9'; // Add background color for visibility
-    container.style.color = 'black'; // Ensure text color is visible
-    container.style.height = '100vh'; // Set height to viewport height for visibility
+    
+    // Apply a gradient background to assist in reading flow
+    container.style.color = '#333333';  // Dark grey text for readability
+    container.style.fontFamily = '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'; // Clean font family
+    container.style.borderRadius = '0';  // No rounded corners to span the full screen
+    container.style.boxShadow = 'none';  // Remove box shadow for full-width text
+    container.style.margin = '0';  // No margin to span the entire screen horizontally
+    container.style.padding = '0 20px';  // Add horizontal padding for readability
+    container.style.lineHeight = '1.6';  // Increased line height for readability
 
     // Iterate over all elements (headers, paragraphs) and maintain order
     contentElements.forEach(element => {
@@ -122,10 +133,11 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
         // Handle paragraphs
         if (tagName === 'p') {
             newElement.textContent = element.textContent;
+            newElement.style.marginBottom = '20px';  // Add spacing between paragraphs
             container.appendChild(newElement);
         }
 
-        // Handle headers
+        // Handle headers with educational blue accents
         if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
             newElement.textContent = element.textContent;
             styleHeaders(newElement);  // Apply styles to headers
@@ -138,7 +150,7 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
 
     adjustTextLayout(container, scaleFactor);
 
-    document.body.style.overflow = 'scroll';
+    document.body.style.overflow = 'scroll'; // Re-enable scrolling
 }
 
 // Function to fetch and process content for both Wikipedia and non-Wikipedia pages
@@ -187,7 +199,6 @@ function fetchWikipediaContent(pageTitle) {
             console.error("Error fetching Wikipedia content:", error);
         });
 }
-
 
 // Function to fetch and modify non-Wikipedia content
 function fetchNonWikipediaContent() {
