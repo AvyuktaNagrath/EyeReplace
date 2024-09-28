@@ -5,13 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Start button clicked");
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.scripting.executeScript({
-                target: { tabId: tabs[0].id },
-                func: () => {
-                    console.log("Running eye-optimized view");
-                    modifyTextContent(); // Direct function call
-                    createNavigationArrows();
-                }
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'startEyeOptimize' }, (response) => {
+                console.log(response.status);
             });
         });
     });
@@ -20,12 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Reset button clicked");
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.scripting.executeScript({
-                target: { tabId: tabs[0].id },
-                func: () => {
-                    console.log("Resetting the page to its original state");
-                    restoreOriginalStyles(); // Direct function call
-                }
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'resetPage' }, (response) => {
+                console.log(response.status);
             });
         });
     });
