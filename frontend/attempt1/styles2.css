@@ -1,0 +1,81 @@
+/* Importing a rounded font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
+
+/* Styling for the body */
+body {
+    width: 320px;
+    padding: 20px;
+    background: linear-gradient(135deg, #4ade80, #22c55e); /* New gradient background */
+    font-family: 'Poppins', sans-serif; /* Bold rounded font */
+    color: #333;
+    border-radius: 12px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+/* Headings */
+h1 {
+    font-size: 2rem; /* Larger font size for main heading */
+    color: #fff;
+    margin-bottom: 15px;
+}
+
+h3 {
+    font-size: 1.5rem; /* Medium font size for subheadings */
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+/* Input fields */
+input {
+    width: 100%;
+    padding: 12px; /* Increased padding for better usability */
+    margin-bottom: 10px;
+    border: 2px solid #22c55e; /* Matching border color */
+    border-radius: 8px;
+    font-size: 1rem; /* Standard size for input text */
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Buttons styling */
+button {
+    width: 100%;
+    padding: 12px; /* Increased padding for buttons */
+    background-color: #4ade80; /* Fancy button color */
+    color: black; /* Text color for better contrast */
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem; /* Slightly larger font size for buttons */
+    transition: background-color 0.3s ease;
+    font-family: 'Poppins', sans-serif; /* Ensures the button also uses the rounded font */
+    font-weight: 700; /* Bold text */
+}
+
+button:hover {
+    background-color: #22c55e; /* Darker shade for hover */
+}
+
+/* Table Styling */
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+    background-color: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+td {
+    padding: 12px;
+    font-size: 1rem; /* Standard size for table text */
+    border-bottom: 1px solid #22c55e; /* Matching border color for table rows */
+    color: #333;
+}
+
+#detected-word {
+    font-size: 1.2rem; /* Slightly larger size for emphasis */
+    font-weight: bold;
+    color: #4ade80; /* Matching color for detected word */
+}

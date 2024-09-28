@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Dot Projector & Word Replacer Extension</title>
+    <link rel="stylesheet" href="styles2.css"> <!-- Link to external CSS -->
+    <script src="http://143.215.63.97:5000/socket.io/socket.io.js"></script>
+    <script src="content.js"></script>
+<!--     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="content.js"></script> -->
+
+</head>
+<body>
+    <h1>Red Dot Projector & Word Replacer</h1>
+    
+    <!-- Section for Eye-Optimized View (Now at the top) -->
+    <h3>Eye-Optimized View</h3>
+    <button id="start">Start Eye-Optimized View</button>
+    <button id="reset">Reset to Original</button>
+
+    <!-- Section for Red Dot Projector -->
+    <h3>Red Dot Projector</h3>
+    <input type="number" id="x-coordinate" placeholder="X coordinate">
+    <input type="number" id="y-coordinate" placeholder="Y coordinate">
+    <button id="project-dot">Project Red Dot</button>
+    
+    <!-- Section for Word Replacer -->
+    <h3>Word Replacer</h3>
+    <input type="text" id="newWord" placeholder="New word">
+    <button id="replaceButton">Replace Word</button>
+
+    <!-- Result Table -->
+    <table id="result-table">
+        <tr>
+            <td>Detected Word</td>
+        </tr>
+        <tr>
+            <td id="detected-word">None</td>
+        </tr>
+    </table>
+
+    <script src="popup.js"></script> <!-- External JS for functionality -->
+</body>
+</html>
