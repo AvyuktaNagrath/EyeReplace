@@ -1,26 +1,40 @@
 from eyeware.client import TrackerClient
+from flask import Flask
+from flask_socketio import SocketIO
 import time
 
+# Ports configuration
+BEAM_PORT = 12010
+BACKEND_PORT = 5000
+
+app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 def run_tracker():
-    tracker = TrackerClient(base_communication_port=12010, hostname="127.0.0.1")
+    tracker = TrackerClient(base_communication_port=BEAM_PORT, hostname="127.0.0.1")
 
     while True:
         if tracker.connected:
-            # Retrieve and print head pose
-            head_pose = tracker.get_head_pose_info()
-            head_is_lost = head_pose.is_lost
-            if not head_is_lost:
-                rot = head_pose.transform.rotation
-                tr = head_pose.transform.translation
-                print(f"Head Pose: Rotation: {rot}, Translation: {tr}")
-
-            # Retrieve and print screen gaze
+            # Retrieve and send screen gaze data
             screen_gaze = tracker.get_screen_gaze_info()
             screen_gaze_is_lost = screen_gaze.is_lost
             if not screen_gaze_is_lost:
-                print(f"Gaze on Screen: Coordinates: ({screen_gaze.x}, {screen_gaze.y})")
+                screen_gaze_data = {
+                    "x": screen_gaze.x,
+                    "y": screen_gaze.y
+                }
+                socketio.emit('screen_gaze_data', screen_gaze_data)
+                print(f"Sent Gaze on Screen: {screen_gaze_data}")
 
-            time.sleep(1 / 30)  # Data frequency at 30 Hz
+            time.sleep(1)  # Data frequency at 30 Hz
         else:
             print("No connection with tracker server")
             time.sleep(2)
+
+@app.route('/')
+def index():
+    return "Eye Tracker WebSocket Server is running."
+
+if __name__ == '__main__':
+    socketio.start_background_task(target=run_tracker)
+    socketio.run(app, host='0.0.0.0', port=BACKEND_PORT)

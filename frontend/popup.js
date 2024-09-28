@@ -1,31 +1,43 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Popup script loaded");
 
+    // Start button: sends message to content.js to start the eye-optimized view
     document.getElementById("start").addEventListener("click", () => {
         console.log("Start button clicked");
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             chrome.tabs.sendMessage(tabs[0].id, { action: 'startEyeOptimize' }, (response) => {
-                console.log(response.status);
+                if (response && response.status) {
+                    console.log(response.status);
+                } else {
+                    console.log("No response from content script.");
+                }
             });
         });
     });
 
+    // Reset button: sends message to content.js to reset the page view
     document.getElementById("reset").addEventListener("click", () => {
         console.log("Reset button clicked");
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             chrome.tabs.sendMessage(tabs[0].id, { action: 'resetPage' }, (response) => {
-                console.log(response.status);
+                if (response && response.status) {
+                    console.log(response.status);
+                } else {
+                    console.log("No response from content script.");
+                }
             });
         });
     });
 
+    // Coordinates and word projection logic
     let currentX = null;
     let currentY = null;
     let currentWord = 'blank';
     let cleanedWord = '';
 
+    // Event listener for 'Project Dot' button
     document.getElementById('project-dot').addEventListener('click', () => {
         const x = parseInt(document.getElementById('x-coordinate').value);
         const y = parseInt(document.getElementById('y-coordinate').value);
@@ -58,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Function to project red dot and detect nearby words
     function projectRedDotAndFindWord(x, y) {
         // Remove old red dot if it exists
         const oldDot = document.getElementById('red-dot');
@@ -79,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dot.style.pointerEvents = 'none';
         document.body.appendChild(dot);
 
-        // Detect nearby words within 70-pixel radius
+        // Detect nearby words within a 70-pixel radius
         const range = document.caretRangeFromPoint(x, y);
         if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
             // Get the text node and split it into words
@@ -97,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const wordIndex = text.indexOf(word);
                 wordRange.setStart(textNode, wordIndex);
                 wordRange.setEnd(textNode, wordIndex + word.length);
-                
+
                 const rects = wordRange.getClientRects();
                 for (const rect of rects) {
                     const distance = Math.sqrt(
