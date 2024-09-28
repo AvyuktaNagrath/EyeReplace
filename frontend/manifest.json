@@ -14,14 +14,5 @@
   ],
   "action": {
     "default_popup": "popup.html"
-  },
-  "background": {
-    "service_worker": "background.js"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["popup.js"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }

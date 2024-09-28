@@ -1,4 +1,4 @@
-// Log that the content script has loaded
+// Debugging: Log that the content script has loaded
 console.log("Content script loaded and ready to receive messages.");
 
 // Check if variables are already defined and persist them globally
@@ -8,22 +8,47 @@ if (typeof currentPageIndex === 'undefined') {
 
 if (typeof paginatedText === 'undefined') {
     var paginatedText = [];  
-
-// Check and declare words per row and rows per page only if not already declared
-if (typeof minWordsPerRow === 'undefined') {
-    var minWordsPerRow = 7; 
 }
 
-if (typeof maxWordsPerRow === 'undefined') {
-    var maxWordsPerRow = 10;  
-}
-if (typeof minRowsPerPage === 'undefined') {
-    var minRowsPerPage = 6;  
+if (typeof originalStyles === 'undefined') {
+    var originalStyles = new Map();  
 }
 
-if (typeof maxRowsPerPage === 'undefined') {
-    var maxRowsPerPage = 8;   
+// Store the original styles before modifying them
+function storeOriginalStyles(elements) {
+    elements.forEach(el => {
+        if (!originalStyles.has(el)) {
+            originalStyles.set(el, {
+                fontSize: el.style.fontSize,
+                lineHeight: el.style.lineHeight,
+                textAlign: el.style.textAlign,
+                display: el.style.display,
+                margin: el.style.margin,
+            });
+        }
+    });
 }
+
+// Restore the original styles
+function restoreOriginalStyles() {
+    console.log("Restoring original styles...");
+
+    originalStyles.forEach((styles, el) => {
+        el.style.fontSize = styles.fontSize || '';
+        el.style.lineHeight = styles.lineHeight || '';
+        el.style.textAlign = styles.textAlign || '';
+        el.style.display = styles.display || '';
+        el.style.margin = styles.margin || '';
+    });
+    originalStyles.clear();
+
+    // Remove navigation arrows
+    removeNavigationArrows();
+    document.body.style.overflow = 'scroll';
+
+    console.log("Original styles restored and navigation arrows removed.");
+}
+
 // Function to modify text size and ensure even spacing across the page
 function modifyTextContent() {
     console.log("Modifying text content...");
@@ -31,6 +56,8 @@ function modifyTextContent() {
     const textElements = document.querySelectorAll('p, h1, h2, h3, h4, h5, h6');
     let totalWords = 0;
     let currentWords = [];
+
+    storeOriginalStyles(textElements);  // Store original styles
 
     textElements.forEach((element) => {
         // Skip ads or irrelevant content
@@ -63,7 +90,7 @@ function modifyTextContent() {
         paginatedText.push([...currentWords]);
     }
 
-    showCurrentPage();  // Show the first page
+    showCurrentPage();  
 }
 
 // Function to dynamically calculate font size and adjust spacing based on viewport
@@ -71,19 +98,15 @@ function adjustTextLayout(elements) {
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
 
-    // Calculate the available space for each row (approximate word length/row width)
-    const wordsPerRow = (minWordsPerRow + maxWordsPerRow) / 2;  // Average words per row
-    const rowsPerPage = (minRowsPerPage + maxRowsPerPage) / 2;  // Average rows per page
+    const wordsPerRow = (7 + 10) / 2;  
+    const rowsPerPage = (6 + 8) / 2;  
 
-    // Calculate the ideal font size based on viewport width and word length
-    const averageWordLength = 6;  // Approximate average word length (in characters)
+    const averageWordLength = 6;  
     const fontSizeBasedOnWidth = viewportWidth / (wordsPerRow * averageWordLength);
 
-    // Calculate ideal row height to fit the target number of rows
     const idealRowHeight = viewportHeight / rowsPerPage;
-    const fontSizeBasedOnHeight = idealRowHeight * 0.8;  // 0.8 to adjust for line height
+    const fontSizeBasedOnHeight = idealRowHeight * 0.8;  
 
-    // Use the smaller font size to ensure content fits both width and height constraints
     const optimalFontSize = Math.min(fontSizeBasedOnWidth, fontSizeBasedOnHeight);
 
     let previousElementWasHeader = false;
@@ -94,25 +117,23 @@ function adjustTextLayout(elements) {
         let fontSize = optimalFontSize;
 
         if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
-            fontSize *= 1.5;  // Headers should be larger
-            element.style.textAlign = 'center';  // Center the header text horizontally
-            element.style.marginBottom = '20px'; // Add space below headers
-            element.style.marginTop = previousElementWasHeader ? '20px' : '0'; // Ensure spacing between headers
+            fontSize *= 1.5;  
+            element.style.textAlign = 'center';  
+            element.style.marginBottom = '20px'; 
+            element.style.marginTop = previousElementWasHeader ? '20px' : '0'; 
             previousElementWasHeader = true;
         } else {
-            element.style.textAlign = 'left';  // Paragraphs should be left-aligned
+            element.style.textAlign = 'left';  
             element.style.marginTop = '0';
             previousElementWasHeader = false;
         }
 
-        // Set font size dynamically
         element.style.fontSize = `${fontSize}px`;
-        element.style.lineHeight = `${idealRowHeight}px`;  // Adjust line height to fit rows
-        element.style.margin = '10px 0';  // Add spacing between paragraphs and headers
+        element.style.lineHeight = `${idealRowHeight}px`;  
+        element.style.margin = '10px 0';  
     });
 
-    // Ensure the page fits within the viewport (no scrolling)
-    document.body.style.overflow = 'hidden';  // Disable scrolling
+    document.body.style.overflow = 'hidden';  
 }
 
 // Function to show the current page of text
@@ -121,7 +142,7 @@ function showCurrentPage() {
     allTextElements.forEach((el) => el.style.display = 'none');
 
     const elementsToShow = paginatedText[currentPageIndex];
-    adjustTextLayout(elementsToShow);  // Adjust layout dynamically
+    adjustTextLayout(elementsToShow);  
 
     elementsToShow.forEach((el) => el.element.style.display = 'block');
 }
@@ -146,27 +167,48 @@ function prevPage() {
 function createNavigationArrows() {
     console.log("Creating navigation arrows...");
 
-    // Left arrow for previous page
-    const leftArrow = document.createElement('div');
-    leftArrow.innerHTML = '&larr;';
-    leftArrow.style.position = 'fixed';
-    leftArrow.style.bottom = '20px';
-    leftArrow.style.left = '20px';
-    leftArrow.style.fontSize = '48px';
-    leftArrow.style.cursor = 'pointer';
-    leftArrow.onclick = prevPage;
-    document.body.appendChild(leftArrow);
+    // Check if the arrows already exist, if so, do not create them again
+    if (!document.getElementById('leftArrow') && !document.getElementById('rightArrow')) {
+        const leftArrow = document.createElement('div');
+        leftArrow.innerHTML = '&larr;';
+        leftArrow.style.position = 'fixed';
+        leftArrow.style.bottom = '20px';
+        leftArrow.style.left = '20px';
+        leftArrow.style.fontSize = '48px';
+        leftArrow.style.cursor = 'pointer';
+        leftArrow.onclick = prevPage;
+        leftArrow.id = 'leftArrow';
+        document.body.appendChild(leftArrow);
 
-    // Right arrow for next page
-    const rightArrow = document.createElement('div');
-    rightArrow.innerHTML = '&rarr;';
-    rightArrow.style.position = 'fixed';
-    rightArrow.style.bottom = '20px';
-    rightArrow.style.right = '20px';
-    rightArrow.style.fontSize = '48px';
-    rightArrow.style.cursor = 'pointer';
-    rightArrow.onclick = nextPage;
-    document.body.appendChild(rightArrow);
+        const rightArrow = document.createElement('div');
+        rightArrow.innerHTML = '&rarr;';
+        rightArrow.style.position = 'fixed';
+        rightArrow.style.bottom = '20px';
+        rightArrow.style.right = '20px';
+        rightArrow.style.fontSize = '48px';
+        rightArrow.style.cursor = 'pointer';
+        rightArrow.onclick = nextPage;
+        rightArrow.id = 'rightArrow';
+        document.body.appendChild(rightArrow);
+    }
+}
+
+// Function to remove navigation arrows
+function removeNavigationArrows() {
+    console.log("Removing navigation arrows...");
+
+    const leftArrow = document.getElementById('leftArrow');
+    const rightArrow = document.getElementById('rightArrow');
+
+    if (leftArrow) {
+        leftArrow.remove();
+        console.log("Left arrow removed.");
+    }
+
+    if (rightArrow) {
+        rightArrow.remove();
+        console.log("Right arrow removed.");
+    }
 }
 
 // Listener for the message from the popup to trigger the function
@@ -176,10 +218,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'startEyeOptimize') {
         console.log("Starting eye-optimized view");
 
-        // Modify the page content and add navigation arrows
         modifyTextContent();
         createNavigationArrows();
 
         sendResponse({ status: 'Text optimized and navigation added.' });
+    }
+
+    if (message.action === 'resetPage') {
+        console.log("Reset button clicked, restoring original styles...");
+        restoreOriginalStyles();
+        sendResponse({ status: 'Page reset to original state.' });
     }
 });
