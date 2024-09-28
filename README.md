@@ -24,3 +24,4 @@ HackGT 11 project developed by Avyukta Nagrath, Garv Jain, Aayush Patel, Vidhi K
 1. Navigate to chrome://extensions/ in Chrome.
 2. Enable Developer Mode.
 3. Load the extension by selecting the frontend/ folder.
+
