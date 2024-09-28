@@ -14,13 +14,11 @@ if (typeof originalBodyContent === 'undefined') {
 function storeOriginalStylesAndContent() {
     console.log("Storing original styles and content...");
 
-    // Save the entire original body content before making modifications
     if (!originalBodyContent) {
         originalBodyContent = document.body.innerHTML; // Save the original body content
         console.log("Original body content stored:", originalBodyContent);  // Debugging: Log the stored content
     }
 
-    // Store the original styles of all elements on the page
     const elements = document.querySelectorAll('*');
     elements.forEach(el => {
         if (!originalStyles.has(el)) {
@@ -40,13 +38,11 @@ function storeOriginalStylesAndContent() {
 function restoreOriginalStylesAndContent() {
     console.log("Restoring original styles and content...");
 
-    // Restore the original body content
     if (originalBodyContent) {
         document.body.innerHTML = originalBodyContent; // Restore the original HTML content
         console.log("Original body content restored.");  // Debugging: Log the restored content
     }
 
-    // Restore individual styles for elements (if applicable)
     originalStyles.forEach((styles, el) => {
         el.style.fontSize = styles.fontSize || '';
         el.style.lineHeight = styles.lineHeight || '';
@@ -55,7 +51,6 @@ function restoreOriginalStylesAndContent() {
         el.style.margin = styles.margin || '';
     });
 
-    // Clear the stored styles and content after restoring
     originalStyles.clear();
     originalBodyContent = '';
 
@@ -65,60 +60,99 @@ function restoreOriginalStylesAndContent() {
 }
 
 // Function to dynamically adjust text size and layout based on the viewport
-function adjustTextLayout() {
+function adjustTextLayout(container, scaleFactor = 1) {
+    console.log("Adjusting text layout...");
+
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
 
-    // Approximate layout for 50 words per viewport
     const wordsPerRow = 7;  // Aim for 7-10 words per row
     const rowsPerPage = 7;  // Aim for 6-8 rows per viewport
 
-    // Calculate font size based on viewport dimensions
-    const averageWordLength = 6; // Average word length in characters
+    const averageWordLength = 6;
     const fontSizeBasedOnWidth = viewportWidth / (wordsPerRow * averageWordLength);
 
-    // Calculate line height based on viewport height and number of rows
     const idealRowHeight = viewportHeight / rowsPerPage;
-    const fontSizeBasedOnHeight = idealRowHeight * 0.8;  // Adjust font size to fit the rows properly
+    const fontSizeBasedOnHeight = idealRowHeight * 0.8;
 
-    // Choose the smaller of the two calculated font sizes to fit both width and height
-    const optimalFontSize = Math.min(fontSizeBasedOnWidth, fontSizeBasedOnHeight);
+    const optimalFontSize = Math.min(fontSizeBasedOnWidth, fontSizeBasedOnHeight) * scaleFactor;
 
-    // Apply the calculated font size to the text container
-    const container = document.getElementById('textContainer');
     container.style.fontSize = `${optimalFontSize}px`;
-    container.style.lineHeight = `${idealRowHeight}px`; // Ensure proper line height for the text
+    container.style.lineHeight = `${idealRowHeight}px`;
     container.style.padding = '10px'; // Add some padding for better readability
 }
 
-// Function to modify text content and adjust it to fit approximately 50 words per viewport
-function modifyTextContent(combinedText) {
-    console.log("Modifying text content...");
+// Function to style headers and subheaders
+function styleHeaders(header) {
+    const headerTag = header.tagName.toLowerCase();
+    const headerScaleFactor = {
+        'h1': 1.8,
+        'h2': 1.6,
+        'h3': 1.4,
+        'h4': 1.2,
+        'h5': 1.1,
+        'h6': 1.05
+    }[headerTag] || 1; // Adjust sizes based on header level
 
-    if (!combinedText || combinedText.trim() === '') {
-        console.error("No content found for modification. Combined text is empty.");
+    header.style.fontSize = `${parseFloat(header.style.fontSize) * headerScaleFactor}px`;
+    header.style.fontWeight = 'bold';
+    header.style.marginBottom = '20px'; // Add margin for line break effect after headers
+}
+
+// Function to modify text content while maintaining the correct order of headers and paragraphs
+function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
+    console.log("Modifying text content while maintaining order...");
+
+    if (!contentElements || contentElements.length === 0) {
+        console.error("No content elements found for modification.");
         return;
     }
 
-    // Create a container to display the large combined paragraph
     const container = document.createElement('div');
     container.id = 'textContainer';
     container.style.backgroundColor = '#f9f9f9'; // Add background color for visibility
     container.style.color = 'black'; // Ensure text color is visible
     container.style.height = '100vh'; // Set height to viewport height for visibility
 
-    const paragraphElement = document.createElement('p');
-    paragraphElement.textContent = combinedText;
+    // Iterate over all elements (headers, paragraphs) and maintain order
+    contentElements.forEach(element => {
+        const tagName = element.tagName.toLowerCase();
+        const newElement = document.createElement(tagName);
 
-    container.appendChild(paragraphElement);
+        // Handle paragraphs
+        if (tagName === 'p') {
+            newElement.textContent = element.textContent;
+            container.appendChild(newElement);
+        }
+
+        // Handle headers
+        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+            newElement.textContent = element.textContent;
+            styleHeaders(newElement);  // Apply styles to headers
+            container.appendChild(newElement);
+        }
+    });
+
     document.body.innerHTML = ''; // Clear the current content and display only the new one
     document.body.appendChild(container);
 
-    // Adjust the layout of the text to fit 50 words per viewport
-    adjustTextLayout();
+    adjustTextLayout(container, scaleFactor);
 
-    // Allow normal scrolling
     document.body.style.overflow = 'scroll';
+}
+
+// Function to fetch and process content for both Wikipedia and non-Wikipedia pages
+function fetchAndModifyContent() {
+    console.log("Fetching and modifying content...");
+
+    const currentURL = window.location.href;
+    const pageTitle = extractWikipediaTitleFromURL(currentURL);
+
+    if (pageTitle) {
+        fetchWikipediaContent(pageTitle);  // Wikipedia content fetching and modification
+    } else {
+        fetchNonWikipediaContent();  // For non-Wikipedia content
+    }
 }
 
 // Function to fetch Wikipedia content using the Wikipedia API and apply uniform formatting
@@ -135,28 +169,35 @@ function fetchWikipediaContent(pageTitle) {
                 console.error("Error from Wikipedia API:", response.error);
                 return;
             }
-            // Parse the response to get the page HTML
             const htmlCode = response["parse"]["text"]["*"];
             const parser = new DOMParser();
             const parsedHtml = parser.parseFromString(htmlCode, "text/html");
 
-            // Select all the paragraphs from the Wikipedia page
-            const paragraphs = parsedHtml.querySelectorAll("p");
-            let combinedText = "";
+            const contentElements = parsedHtml.querySelectorAll("p, h1, h2, h3, h4, h5, h6");
 
-            // Convert all paragraphs to plain text and combine them
-            paragraphs.forEach(paragraph => {
-                combinedText += paragraph.textContent + " ";
-            });
+            console.log("Content elements fetched from Wikipedia:", contentElements);
 
-            console.log("Combined Wikipedia Text: ", combinedText);
-
-            // Use the combined text for your purposes (scrollable content, etc.)
-            modifyTextContent(combinedText);
+            modifyTextContentInOrder(contentElements, 1); // Maintain order for Wikipedia
         })
         .catch(function(error) {
             console.error("Error fetching Wikipedia content:", error);
         });
+}
+
+// Function to fetch and modify non-Wikipedia content
+function fetchNonWikipediaContent() {
+    console.log("Fetching non-Wikipedia content...");
+
+    const contentElements = document.querySelectorAll('p, h1, h2, h3, h4, h5, h6');
+
+    if (contentElements.length === 0) {
+        console.error("No paragraphs or headers found to modify on the non-Wikipedia page.");
+        return;
+    }
+
+    console.log("Content elements found in non-Wikipedia page:", contentElements);
+
+    modifyTextContentInOrder(contentElements, 1); // Maintain order for non-Wikipedia pages
 }
 
 // Function to extract the Wikipedia page title from the current tab's URL
@@ -169,29 +210,6 @@ function extractWikipediaTitleFromURL(url) {
     return null;
 }
 
-// Function to handle non-Wikipedia pages
-function modifyTextContentNonWikipedia() {
-    console.log("Modifying non-Wikipedia content...");
-
-    // Select all paragraphs and headers from the current page
-    const paragraphs = document.querySelectorAll('p, h1, h2, h3, h4, h5, h6');
-
-    if (paragraphs.length === 0) {
-        console.error("No paragraphs or headers found to modify on the non-Wikipedia page.");
-        return;
-    }
-
-    let combinedText = "";
-
-    paragraphs.forEach(paragraph => {
-        combinedText += paragraph.textContent + " ";
-    });
-
-    console.log("Combined Text for non-Wikipedia:", combinedText);
-
-    modifyTextContent(combinedText);
-}
-
 // Listener for the message from the popup to trigger the function
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Message received from popup:", message);
@@ -199,26 +217,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'startEyeOptimize') {
         console.log("Starting eye-optimized view");
 
-        // Store original styles and content before modifying the page
         storeOriginalStylesAndContent();
-
-        const currentURL = window.location.href;
-        const pageTitle = extractWikipediaTitleFromURL(currentURL);
-
-        if (pageTitle) {
-            // Fetch Wikipedia content based on the current page's title
-            fetchWikipediaContent(pageTitle);
-        } else {
-            console.error("Unable to extract page title from URL.");
-            modifyTextContentNonWikipedia();  // If it's not Wikipedia, handle as normal content
-        }
+        fetchAndModifyContent();
 
         sendResponse({ status: 'Text optimized and scroll-based navigation added.' });
     }
 
     if (message.action === 'resetPage') {
         console.log("Reset button clicked, restoring original styles...");
-        restoreOriginalStylesAndContent(); // Restore original content and styles
+        restoreOriginalStylesAndContent(); 
         sendResponse({ status: 'Page reset to original state.' });
     }
 });
