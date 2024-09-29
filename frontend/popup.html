@@ -3,55 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eye-Tracker Word Detector</title>
+    <title>Red Dot Projector & Eye Replace Extension</title>
+    <script src="popup.js" defer></script>
     <style>
         body {
-            width: 300px;
-            padding: 10px;
             font-family: Arial, sans-serif;
-        }
-        button {
-            width: 100%;
             padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            margin-bottom: 10px;
         }
-        table {
-            width: 100%;
-            margin-top: 10px;
-            border-collapse: collapse;
-        }
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
+        #detected-word {
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <h1>Eye-Tracker Word Detector</h1>
-
-    <!-- Button to project red dot -->
-    <button id="project-dot">Project Red Dot</button>
-
-    <!-- Button to start the eye-optimized view -->
-    <button id="start-optimize">Start Eye-Optimized View</button>
-
-    <!-- Button to reset the page -->
-    <button id="reset-page">Reset Page</button>
-
-    <table>
-        <tr>
-            <td>Detected Word</td>
-        </tr>
-        <tr>
-            <td id="detected-word">None</td>
-        </tr>
-    </table>
-
-    <script src="popup.js"></script>
+    <h1>Red Dot Projector</h1>
+    <div id="controls">
+        <button id="project-dot">Project Red Dot</button>
+        <button id="start-optimize">Start Eye-Optimized View</button>
+        <button id="reset-page">Reset Page</button>
+    </div>
+    <div>
+        <span>Detected Word: </span><span id="detected-word">blank</span>
+    </div>
 </body>
 </html>
