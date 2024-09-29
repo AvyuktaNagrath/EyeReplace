@@ -4,6 +4,11 @@ console.log("Content script loaded and ready to receive messages.");
 let latestX = null;  // Store the latest X coordinate
 let latestY = null;  // Store the latest Y coordinate
 
+// Store previous coordinates for focus checking
+let storedCoordinates = [];
+let focusTimer = null;  // Timer for checking focus
+let isFocused = false;  // Flag to track focus status
+
 // WebSocket connection to receive gaze data from Flask backend
 const socket = io('http://143.215.63.97:5000'); // Connect to the WebSocket
 
@@ -18,9 +23,15 @@ socket.on('screen_gaze_data', function (data) {
         latestX = data.x;  // Update the latest gaze coordinates
         latestY = data.y;
         console.log(`Received Screen Gaze Coordinates: (${latestX}, ${latestY})`);
+
+        // Store the latest coordinates for focus checking
+        storedCoordinates.push({ x: latestX, y: latestY });
         
         // Continuously project red dot at the latest gaze coordinates
         projectRedDot(latestX, latestY);
+        
+        // Check focus with the new gaze coordinates
+        checkFocus();
     }
 });
 
@@ -44,6 +55,37 @@ function projectRedDot(x, y) {
         dot.style.zIndex = 9999;
         dot.style.pointerEvents = 'none';
         document.body.appendChild(dot);
+    }
+}
+
+// Function to check if the latest gaze coordinates are within 50 pixels for 2 seconds
+function checkFocus() {
+    // Check if the latest coordinates are within a box of 50 pixels
+    const focusBoxSize = 50;
+
+    const isInFocus = storedCoordinates.some(coordinate => {
+        return (latestX >= coordinate.x - focusBoxSize && latestX <= coordinate.x + focusBoxSize) &&
+               (latestY >= coordinate.y - focusBoxSize && latestY <= coordinate.y + focusBoxSize);
+    });
+
+    if (isInFocus) {
+        // If focus is active, increment the timer
+        if (!isFocused) {
+            // Start the timer if focus just became active
+            focusTimer = setTimeout(() => {
+                // Run the detect word functionality after 2 seconds of focus
+                const detectedWord = detectWordAtCoordinates(latestX, latestY);
+                // Send the detected word to the Chrome extension
+                chrome.runtime.sendMessage({ action: 'detectedWord', word: detectedWord });
+            }, 2000);
+            isFocused = true;
+        }
+    } else {
+        // Reset focus if gaze moves out of the box
+        if (isFocused) {
+            clearTimeout(focusTimer);
+            isFocused = false;
+        }
     }
 }
 
@@ -179,65 +221,28 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
     container.style.fontFamily = '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'; // Clean font family
     container.style.borderRadius = '0';  // No rounded corners to span the full screen
     container.style.boxShadow = 'none';  // Remove box shadow for full-width text
-    container.style.margin = '0';  // No margin to span the entire screen horizontally
-    container.style.padding = '0 20px';  // Add horizontal padding for readability
-    container.style.lineHeight = '1.6';  // Increased line height for readability
-
+    container.style.margin = '0';  // Remove default margins
+    
     contentElements.forEach(element => {
-        const tagName = element.tagName.toLowerCase();
-        const newElement = document.createElement(tagName);
-
-        // Handle paragraphs
-        if (tagName === 'p') {
-            newElement.textContent = element.textContent;
-            newElement.style.marginBottom = '20px';  // Add spacing between paragraphs
-            container.appendChild(newElement);
-        }
-
-        // Handle headers with educational blue accents
-        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
-            newElement.textContent = element.textContent;
-            styleHeaders(newElement);  // Apply styles to headers
-            container.appendChild(newElement);
+        if (element.tagName === 'H1' || element.tagName === 'H2' || element.tagName === 'H3' || 
+            element.tagName === 'H4' || element.tagName === 'H5' || element.tagName === 'H6' || 
+            element.tagName === 'P') {
+            const clonedElement = element.cloneNode(true);
+            modifyTextLayout(clonedElement, scaleFactor);  // Adjust layout based on viewport size
+            styleHeaders(clonedElement);  // Style headers if applicable
+            container.appendChild(clonedElement);
         }
     });
 
-    document.body.innerHTML = ''; // Clear the current content and display only the new one
-    document.body.appendChild(container);
-
-    adjustTextLayout(container, scaleFactor);
-
-    document.body.style.overflow = 'scroll'; // Re-enable scrolling
+    document.body.innerHTML = '';  // Clear the body
+    document.body.appendChild(container);  // Add the modified content
+    document.body.style.overflow = 'hidden'; // Disable scrolling to avoid content jumping
 }
 
-// Function to fetch and modify non-Wikipedia content
-function fetchNonWikipediaContent() {
-    const contentElements = document.querySelectorAll('p, h1, h2, h3, h4, h5, h6');
-
-    if (contentElements.length === 0) {
-        console.error("No paragraphs or headers found to modify on the non-Wikipedia page.");
-        return;
-    }
-
-    modifyTextContentInOrder(contentElements, 1); // Maintain order for non-Wikipedia pages
-}
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'detectWord') {
-        if (latestX !== null && latestY !== null) {
-            console.log(`Detecting word at (${latestX}, ${latestY})`);
-            const detectedWord = detectWordAtCoordinates(latestX, latestY);
-            sendResponse({ word: detectedWord });
-        } else {
-            console.error("No valid gaze coordinates available.");
-            sendResponse({ word: null });
-        }
-    } else if (message.action === 'startEyeOptimize') {
-        storeOriginalStylesAndContent();
-        fetchNonWikipediaContent();
-        sendResponse({ status: 'Text optimized and scroll-based navigation added.' });
-    } else if (message.action === 'resetPage') {
-        restoreOriginalStylesAndContent();
-        sendResponse({ status: 'Page reset to original state.' });
+// Send the stored gaze data to the content script on demand
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.action === 'processGazeData') {
+        const scaleFactor = request.scaleFactor || 1;  // Default scale factor
+        modifyTextContentInOrder(document.body.children, scaleFactor);  // Modify the text content
     }
 });
