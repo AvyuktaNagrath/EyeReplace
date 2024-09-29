@@ -5,7 +5,10 @@ let focusStartTime = null;  // Track the time the focus started
 let lastWordX = null;  // X coordinate of the last focused word
 let lastWordY = null;  // Y coordinate of the last focused word
 
-let selectedModeInContent = null;
+let selectedModeInContent = 'simplify';  // Default mode is set to 'simplify'
+let languageESL = 'Spanish';  // Default ESL language
+
+
 
 const FOCUS_THRESHOLD_MS = 2000;  // 2 second threshold to trigger word replacement
 const FOCUS_RADIUS_PX = 50;  // Allowable pixel radius for gaze drift
@@ -31,7 +34,7 @@ socket.on('screen_gaze_data', function (data) {
 
         // If it's a new word 
         if (detectedWord !== currentWord) {
-            console.log(`New word detected: ${detectedWord}, resetting timer.`);
+            //console.log(`New word detected: ${detectedWord}, resetting timer.`);
 
             // Reset focus to the new word and update the timer
             currentWord = detectedWord;
@@ -43,7 +46,7 @@ socket.on('screen_gaze_data', function (data) {
             lastWordY = wordPosition.y;
         } else {
             // If the word hasn't changed and we are within the bounding radius, check the timer
-            console.log(`Time focused on '${currentWord}': ${Date.now() - focusStartTime} ms`);
+            //console.log(`Time focused on '${currentWord}': ${Date.now() - focusStartTime} ms`);
 
             // If the focus time exceeds the threshold, trigger word replacement
             if (Date.now() - focusStartTime >= FOCUS_THRESHOLD_MS) {
@@ -114,8 +117,19 @@ function sendWordToBackendViaSocket(word, context) {
     if (!word || word === "blank") {
         console.log("No valid word detected, skipping socket emission.");
     } else {
-        socket.emit('word_detection', { word, context });
-        console.log(`Sent word: ${word}, with context: ${context}`);
+        // Include selected language for ESL mode
+        let messageData = {
+            word: word,
+            context: context,
+            mode: selectedModeInContent
+        };
+
+        if (selectedModeInContent === 'esl') {
+            messageData.language = languageESL;  // Send selected language for ESL mode
+        }
+
+        socket.emit('word_detection', messageData);
+        console.log(`Sent word: ${word}, with context: ${context}, mode: ${selectedModeInContent}, language: ${languageESL}`);
     }
 }
 
@@ -134,7 +148,7 @@ function projectRedDot(x, y) {
 
     // Apply constant offset correction
     const constantXOffset = 5;  // Replace with your measured X offset
-    const constantYOffset = 127;  // Replace with your measured Y offset
+    const constantYOffset = 137;  // Replace with your measured Y offset
 
     // Subtract the constant offset
     const finalX = (adjustedX - offsetX - constantXOffset) + window.scrollX;
@@ -179,7 +193,7 @@ function detectWordAtRedDot(x, y) {
     const offsetY = contentRect.top;
 
     const constantXOffset = 5;  // Your X offset
-    const constantYOffset = 127;  // Your Y offset
+    const constantYOffset = 137;  // Your Y offset
 
     // Apply the same final coordinate adjustments
     const finalX = (adjustedX - offsetX - constantXOffset) + window.scrollX;
@@ -221,7 +235,7 @@ function detectWordAtCoordinates(x, y) {
         });
     }
 
-    console.log(`Detected word at coordinates (${x}, ${y}): ${closestWord}`);
+    //console.log(`Detected word at coordinates (${x}, ${y}): ${closestWord}`);
     return closestWord;
 }
 
@@ -246,7 +260,7 @@ function replaceWordInDOM(originalWord, simplerWord) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'detectWord') {
         if (latestX !== null && latestY !== null) {
-            console.log(`Detecting word at (${latestX}, ${latestY})`);
+            //console.log(`Detecting word at (${latestX}, ${latestY})`);
             const detectedWord = detectWordAtRedDot(latestX, latestY);  // Now using adjusted coordinates
             const context = getContextFromDOM(latestX, latestY);  // Get context
             sendWordToBackendViaSocket(detectedWord, context);  // Use WebSocket instead of fetch
@@ -263,7 +277,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         restoreOriginalStylesAndContent();
         sendResponse({ status: 'Page reset to original state.' });
     } 
-    // NEW: Handling the setMode action from popup.js
+    // Handling the setMode action from popup.js
     else if (message.action === 'setMode' && message.mode) {
         // Set the global variable to the selected mode
         selectedModeInContent = message.mode;
@@ -272,7 +286,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Optional: Respond back to popup.js with confirmation
         sendResponse({ status: `Mode set to ${selectedModeInContent}` });
     }
+    // NEW: Handling the setESL action for language selection from popup.js
+    else if (message.action === 'setESL' && message.language) {
+        // Set the global variable to the selected ESL language
+        languageESL = message.language;
+        console.log(`ESL language set to: ${languageESL} in content.js`);
+
+        // Optional: Respond back to popup.js with confirmation
+        sendResponse({ status: `Language set to ${languageESL}` });
+    }
 });
+
 
 
 // Function to get context around the detected word (e.g., 3 words before and after)

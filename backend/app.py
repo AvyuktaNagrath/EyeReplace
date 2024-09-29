@@ -37,9 +37,9 @@ def run_tracker():
             print("No connection with tracker server")
             time.sleep(2)
 
-# Synonym replacement logic
+# === Synonym replacement logic ===
 
-# Function to get a simpler word using the OpenAI API
+# Function to get a simpler synonym using OpenAI API
 def get_simpler_word(word, context):
     try:
         response = client.chat.completions.create(
@@ -59,9 +59,48 @@ def get_simpler_word(word, context):
         print(f"Error querying OpenAI API: {e}")
         return None
 
+# Function to get a translation (ESL mode) using OpenAI API
+def get_translated_word(word, context, target_language="Korean"):
+    try:
+        response = client.chat.completions.create(
+            messages=[{
+                "role": "user",
+                "content": f"Take in the context: '{context}', now please translate the word: '{word}' into {target_language}. Only provide the translated word, no explanations."
+            }],
+            model="gpt-3.5-turbo",
+            temperature=0.4,
+            max_tokens=4,
+            stream=False
+        )
+        translated_word = response.choices[0].message.content.strip()
+        print(f"API response for '{word}': {translated_word}")
+        return translated_word
+    except Exception as e:
+        print(f"Error querying OpenAI API: {e}")
+        return None
+
+# Function to get a dyslexia-friendly synonym (equal difficulty) using OpenAI API
+def get_dyslexia_synonym(word, context):
+    try:
+        response = client.chat.completions.create(
+            messages=[{
+                "role": "user",
+                "content": f"If the input word is one of the following: 'this', 'that', 'such', 'of', 'is', 'my', 'and', 'an', 'a', do not change it, and return the word as it is. If it is not one of these words, return a synonym of equal difficulty to '{word}'. Return only ONE word, no explanation, and DO NOT change the part of speech of the word."
+            }],
+            model="gpt-3.5-turbo",
+            temperature=0.4,
+            max_tokens=4,
+            stream=False
+        )
+        synonym = response.choices[0].message.content.strip()
+        print(f"API response for '{word}': {synonym}")
+        return synonym
+    except Exception as e:
+        print(f"Error querying OpenAI API: {e}")
+        return None
+
 # Function to separate the word from its punctuation
 def separate_word_punctuation(word):
-    """Separates a word from its punctuation, if any."""
     suffix_punct = ""
     while word and word[-1] in string.punctuation:
         suffix_punct = word[-1] + suffix_punct
@@ -74,19 +113,26 @@ def separate_word_punctuation(word):
 
     return word, prefix_punct, suffix_punct
 
-# Function to replace a word with its simpler synonym if available
-def replace_with_easier_synonym(word, context, is_first_word=False):
+# Function to replace word with simpler synonym or translation based on mode
+def replace_word_based_on_mode(word, context, mode, language='Spanish', is_first_word=False):
     original_word = word
     word, prefix_punct, suffix_punct = separate_word_punctuation(word)
-    simpler_word = get_simpler_word(word, context)
 
-    if simpler_word and simpler_word.lower() != word:
+    # Choose the function based on the mode
+    if mode == "simplify":
+        new_word = get_simpler_word(word, context)
+    elif mode == "esl":
+        new_word = get_translated_word(word, context, language)  # Pass the selected language
+    elif mode == "dyslexia":
+        new_word = get_dyslexia_synonym(word, context)
+    else:
+        new_word = word  # No change if mode is unrecognized
+
+    if new_word and new_word.lower() != word.lower():
         if is_first_word or original_word[0].isupper():
-            simpler_word = simpler_word.capitalize()
-        else:
-            simpler_word = simpler_word.lower()
+            new_word = new_word.capitalize()
+        return prefix_punct + new_word + suffix_punct
 
-        return prefix_punct + simpler_word + suffix_punct
     return original_word
 
 # Handle WebSocket for word detection
@@ -94,14 +140,19 @@ def replace_with_easier_synonym(word, context, is_first_word=False):
 def handle_word_detection(data):
     word = data['word']
     context = data['context']
-    print(f"Received word: {word}, Context: {context}")
+    mode = data.get('mode', 'simplify')  # Default mode is simplify if not provided
+    language = data.get('language', 'Spanish')  # Default language is Spanish if not provided
 
-    simpler_word = replace_with_easier_synonym(word, context)
+    print(f"Received word: {word}, Context: {context}, Mode: {mode}, Language: {language}")
+
+    # Pass the selected language to replace_word_based_on_mode for ESL mode
+    simpler_word = replace_word_based_on_mode(word, context, mode, language)
 
     if simpler_word:
         emit('synonym_response', {'originalWord': word, 'simpler_word': simpler_word})
     else:
         emit('synonym_response', {'originalWord': word, 'simpler_word': word})
+    
 
 # Start the eye tracker in the background when the app starts
 @socketio.on('connect')

@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global variable to store the current mode selected
     let selectedMode = null;
+    let selectedLanguage = "Spanish";  // Default language for ESL
 
     // Helper function to remove active class from all buttons
     function clearActiveButtons() {
@@ -74,11 +75,27 @@ document.addEventListener('DOMContentLoaded', () => {
         sendSelectedModeToContentScript(selectedMode);
     });
 
+    // Capture language change from the dropdown for ESL
+    document.getElementById('language-select').addEventListener('change', (event) => {
+        selectedLanguage = event.target.value;
+        console.log(`Selected ESL language: ${selectedLanguage}`);
+        sendSelectedLanguageToContentScript(selectedLanguage);  // Send language to content.js
+    });
+
     // Function to send the selected mode to content.js
     function sendSelectedModeToContentScript(mode) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             chrome.tabs.sendMessage(tabs[0].id, { action: 'setMode', mode: mode }, (response) => {
                 console.log(`Mode "${mode}" sent to content script.`);
+            });
+        });
+    }
+
+    // Function to send the selected language to content.js
+    function sendSelectedLanguageToContentScript(language) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'setESL', language: language }, (response) => {
+                console.log(`Language "${language}" sent to content script.`);
             });
         });
     }
