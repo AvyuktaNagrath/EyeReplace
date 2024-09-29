@@ -29,6 +29,17 @@
             padding: 8px;
             text-align: center;
         }
+        #signInButton {
+            background-color: #4285f4;
+            color: white;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        #signInStatus {
+            margin-top: 10px;
+            color: green;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -45,6 +56,10 @@
 
     <!-- Button to reset the page -->
     <button id="reset-page">Reset Page</button>
+
+    <!-- Google Sign-In Button -->
+    <button id="signInButton">Sign In with Google</button>
+    <div id="signInStatus"></div>
 
     <table>
         <tr>

@@ -5,10 +5,14 @@
   "description": "Projects a red dot and detects the nearby word, and includes eye replacement features.",
   "permissions": [
     "activeTab",
-    "scripting"
+    "identity",
+    "scripting",
+    "storage",
+    "tabs"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
   },
   "content_scripts": [
     {
@@ -24,5 +28,9 @@
       "resources": ["libs/socket.io.min.js"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "oauth2": {
+    "client_id": "156299842580-5t4qij9fc569ef6c9pevr2ukku7gb4f2.apps.googleusercontent.com",
+    "scopes": ["profile", "email"]   
+  }   
 }
