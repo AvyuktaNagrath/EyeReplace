@@ -218,15 +218,18 @@ function detectWordAtCoordinates(x, y) {
     return closestWord;
 }
 
-// Function to replace the word in the DOM with its synonym
 function replaceWordInDOM(originalWord, simplerWord) {
     const elements = document.body.getElementsByTagName('*');
+    const regex = new RegExp(`\\b${originalWord}\\b`, 'g');  // Match the whole word
+
     for (let el of elements) {
         for (let node of el.childNodes) {
             if (node.nodeType === Node.TEXT_NODE) {
-                const updatedText = node.nodeValue.replace(originalWord, simplerWord);
-                node.nodeValue = updatedText;
-                console.log(`Replaced '${originalWord}' with '${simplerWord}' in the DOM.`);
+                const updatedText = node.nodeValue.replace(regex, simplerWord);
+                if (updatedText !== node.nodeValue) {
+                    node.nodeValue = updatedText;
+                    console.log(`Replaced '${originalWord}' with '${simplerWord}' in the DOM.`);
+                }
             }
         }
     }
