@@ -1,8 +1,12 @@
-// Debugging: Log that the content script has loaded
-console.log("Content script loaded and ready to receive messages.");
-
 let latestX = null;  // Store the latest X coordinate
 let latestY = null;  // Store the latest Y coordinate
+let currentWord = null;  // Track the current word being focused on
+let focusStartTime = null;  // Track the time the focus started
+let lastWordX = null;  // X coordinate of the last focused word
+let lastWordY = null;  // Y coordinate of the last focused word
+
+const FOCUS_THRESHOLD_MS = 2000;  // 2 second threshold to trigger word replacement
+const FOCUS_RADIUS_PX = 50;  // Allowable pixel radius for gaze drift
 
 // WebSocket connection to receive gaze data from Flask backend
 const socket = io('http://143.215.63.97:5000'); // Connect to the WebSocket
@@ -12,25 +16,96 @@ socket.on('connect', function () {
     console.log("Socket.IO connection established with Flask backend.");
 });
 
-// Event listener for receiving gaze data from the Flask backend
 socket.on('screen_gaze_data', function (data) {
     if (data.x !== undefined && data.y !== undefined) {
         latestX = data.x;  // Update the latest gaze coordinates
         latestY = data.y;
-        //console.log(`Received Screen Gaze Coordinates: (${latestX}, ${latestY})`);
-        
-        
-        // Continuously project red dot at the latest gaze coordinates
+
+        // Project the red dot at the latest coordinates
         projectRedDot(latestX, latestY);
+
+        // Detect the word at the gaze position
+        const detectedWord = detectWordAtRedDot(latestX, latestY);
+
+        // If it's a new word 
+        if (detectedWord !== currentWord) {
+            console.log(`New word detected: ${detectedWord}, resetting timer.`);
+
+            // Reset focus to the new word and update the timer
+            currentWord = detectedWord;
+            focusStartTime = Date.now();
+
+            // Update the last word's center coordinates for future checks
+            const wordPosition = getWordCenterPosition(detectedWord);
+            lastWordX = wordPosition.x;
+            lastWordY = wordPosition.y;
+        } else {
+            // If the word hasn't changed and we are within the bounding radius, check the timer
+            console.log(`Time focused on '${currentWord}': ${Date.now() - focusStartTime} ms`);
+
+            // If the focus time exceeds the threshold, trigger word replacement
+            if (Date.now() - focusStartTime >= FOCUS_THRESHOLD_MS) {
+                triggerWordReplacement(currentWord);
+                focusStartTime = null;  // Reset timer after replacing the word
+            }
+        }
     }
 });
 
-// Listen for synonym responses from the backend via WebSocket
-socket.on('synonym_response', function (data) {
-    const { originalWord, simpler_word } = data;
-    console.log(`Received synonym for '${originalWord}': '${simpler_word}'`);
-    replaceWordInDOM(originalWord, simpler_word);
-});
+
+// Function to check if the current gaze is within the focus radius
+function isWithinFocusRadius(x, y, wordX, wordY) {
+    const distance = Math.sqrt(Math.pow(x - wordX, 2) + Math.pow(y - wordY, 2));
+    return distance <= FOCUS_RADIUS_PX;
+}
+
+// Function to trigger word replacement by sending the word to the backend
+function triggerWordReplacement(word) {
+    console.log(`Focusing on '${word}' for more than 1 second. Replacing...`);
+
+    const context = getContextFromDOM(latestX, latestY);  // Get context for the word
+
+    // Send the detected word and its context to the backend via WebSocket
+    sendWordToBackendViaSocket(word, context);
+}
+
+// Function to get the center position of a word in the DOM (for bounding radius calculation)
+function getWordCenterPosition(word) {
+    const range = document.createRange();
+    const textNode = getTextNodeByWord(word);  // Custom function to find the text node of the word
+    if (textNode) {
+        range.selectNodeContents(textNode);
+
+        const rect = range.getBoundingClientRect();
+        return {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+        };
+    } else {
+        return { x: 0, y: 0 };  // If the word is not found, return a default position
+    }
+}
+
+// Helper function to find the text node containing the word
+function getTextNodeByWord(word) {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: function(node) {
+            if (node.nodeType === Node.TEXT_NODE && node.textContent.includes(word)) {
+                return NodeFilter.FILTER_ACCEPT;
+            }
+            return NodeFilter.FILTER_SKIP;
+        }
+    });
+
+    while (walker.nextNode()) {
+        if (walker.currentNode.textContent.includes(word)) {
+            return walker.currentNode;
+        }
+    }
+
+    return null;  // If no matching text node is found
+}
+
 
 // Function to send detected word to backend via WebSocket
 function sendWordToBackendViaSocket(word, context) {
@@ -80,13 +155,15 @@ function projectRedDot(x, y) {
 
 }
 
-
+socket.on('synonym_response', function (data) {
+    const { originalWord, simpler_word } = data;
+    console.log(`Received synonym for '${originalWord}': '${simpler_word}'`);
+    replaceWordInDOM(originalWord, simpler_word);
+});
 
 // Function to detect the word at the red dot's adjusted coordinates
 function detectWordAtRedDot(x, y) {
-    // Apply the same constant offsets as used in projectRedDot
     const pixelRatio = window.devicePixelRatio;
-
     const adjustedX = x / pixelRatio;  // Scale down the x-coordinate
     const adjustedY = y / pixelRatio;  // Scale down the y-coordinate
 
@@ -101,11 +178,10 @@ function detectWordAtRedDot(x, y) {
     const finalX = (adjustedX - offsetX - constantXOffset) + window.scrollX;
     const finalY = (adjustedY - offsetY - constantYOffset) + window.scrollY;
 
-    // Call the original detectWordAtCoordinates using the corrected coordinates
-    return detectWordAtCoordinates(finalX, finalY);
+    return detectWordAtCoordinates(finalX, finalY);  // Detect the word at the final coordinates
 }
 
-// Function to detect the word at the current (adjusted) gaze coordinates
+// Function to detect the word at specific coordinates
 function detectWordAtCoordinates(x, y) {
     const range = document.caretRangeFromPoint(x, y);
     let closestWord = 'blank';
