@@ -14,9 +14,9 @@ def get_translated_word(word, context, target_language="Korean"):
                 "role": "user",
                 "content": f"Take in the context: '{context}', now please translate the word: '{word}' into {target_language}. Only provide the translated word, no explanations."
             }],
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",  # Changed model to GPT-3.5 Turbo
             temperature=0.4,
-            max_tokens=10,
+            max_tokens=4,  # Limit response to a short word
             stream=False
         )
         # Extract the translated word from the response
@@ -65,21 +65,3 @@ def replace_with_translation(word, context, is_first_word=False):
     else:
         print(f"No translation found for '{original_word}'. Keeping original.")
         return original_word
-
-# Example text input
-text = "The alien abduction caused a major disruption in the small town."
-
-# Process each word in the text, while providing context
-processed_text = []
-words = text.split()
-
-for i, word in enumerate(words):
-    is_first_word = (i == 0)  # Check if it's the first word of the sentence
-    context = " ".join(words[max(0, i-3):i+4])  # Provide context for the word (3 words before and after)
-    translated_word = replace_with_translation(word, context, is_first_word)
-    processed_text.append(translated_word)
-
-# Join the processed words back into a sentence
-result = " ".join(processed_text)
-print("\nOriginal text:", text)
-print("Translated text:", result)
