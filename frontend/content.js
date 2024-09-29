@@ -27,7 +27,7 @@ socket.on('screen_gaze_data', function (data) {
         latestY = data.y;
 
         // Project the red dot at the latest coordinates
-       // projectRedDot(latestX, latestY);
+        //projectRedDot(latestX, latestY);
 
         // Detect the word at the gaze position
         const detectedWord = detectWordAtRedDot(latestX, latestY);
@@ -444,7 +444,128 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
     document.body.style.overflow = 'scroll'; // Re-enable scrolling
 }
 
-// Function to fetch and modify non-Wikipedia content
+let currentPage = 1;  // Track the current page number
+let totalPages = 1;  // Total number of pages
+const wordsPerPage = 60;  // Maximum number of words per page
+
+function paginateContent(container) {
+    const allTextNodes = [];
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+    
+    // Gather all text nodes
+    while (walker.nextNode()) {
+        if (walker.currentNode.nodeType === Node.TEXT_NODE) {
+            allTextNodes.push(walker.currentNode);
+        }
+    }
+
+    let currentWords = 0;
+    let currentPageContent = '';
+    let pages = [];
+
+    // Split the text content into pages
+    allTextNodes.forEach(node => {
+        const words = node.textContent.split(/\s+/).filter(word => word.length > 0);  // Get words
+        currentWords += words.length;
+
+        // If current words exceed the limit, create a new page
+        if (currentWords > wordsPerPage) {
+            pages.push(currentPageContent);
+            currentPageContent = '';
+            currentWords = words.length;  // Reset word count for the new page
+        }
+        currentPageContent += node.textContent + ' ';
+    });
+
+    // Push the last page content
+    if (currentPageContent.length > 0) {
+        pages.push(currentPageContent);
+    }
+
+    totalPages = pages.length;
+
+    displayPage(pages, currentPage);
+    addPaginationControls(pages);
+}
+
+// Function to display a specific page
+function displayPage(pages, page) {
+    const container = document.getElementById('textContainer');
+    container.innerHTML = '';  // Clear existing content
+    container.innerHTML = pages[page - 1];  // Display the selected page
+
+    adjustTextLayout(container, 1);  // Adjust the layout
+}
+
+// Function to add pagination controls
+function addPaginationControls(pages) {
+    const paginationDiv = document.createElement('div');
+    paginationDiv.id = 'paginationControls';
+    paginationDiv.style.textAlign = 'center';
+    paginationDiv.style.marginTop = '20px';
+
+    const prevButton = document.createElement('button');
+    prevButton.textContent = 'Previous';
+    prevButton.disabled = currentPage === 1;
+    prevButton.onclick = function () {
+        if (currentPage > 1) {
+            currentPage--;
+            displayPage(pages, currentPage);
+            updatePaginationControls(pages);
+        }
+    };
+
+    const nextButton = document.createElement('button');
+    nextButton.textContent = 'Next';
+    nextButton.disabled = currentPage === totalPages;
+    nextButton.onclick = function () {
+        if (currentPage < totalPages) {
+            currentPage++;
+            displayPage(pages, currentPage);
+            updatePaginationControls(pages);
+        }
+    };
+
+    paginationDiv.appendChild(prevButton);
+    paginationDiv.appendChild(document.createTextNode(` Page ${currentPage} of ${totalPages} `));
+    paginationDiv.appendChild(nextButton);
+
+    document.body.appendChild(paginationDiv);  // Append the pagination controls to the body
+}
+
+// Function to update pagination controls based on the current page
+function updatePaginationControls(pages) {
+    const paginationDiv = document.getElementById('paginationControls');
+    paginationDiv.innerHTML = '';  // Clear existing controls
+
+    const prevButton = document.createElement('button');
+    prevButton.textContent = 'Previous';
+    prevButton.disabled = currentPage === 1;
+    prevButton.onclick = function () {
+        if (currentPage > 1) {
+            currentPage--;
+            displayPage(pages, currentPage);
+            updatePaginationControls(pages);
+        }
+    };
+
+    const nextButton = document.createElement('button');
+    nextButton.textContent = 'Next';
+    nextButton.disabled = currentPage === totalPages;
+    nextButton.onclick = function () {
+        if (currentPage < totalPages) {
+            currentPage++;
+            displayPage(pages, currentPage);
+            updatePaginationControls(pages);
+        }
+    };
+
+    paginationDiv.appendChild(prevButton);
+    paginationDiv.appendChild(document.createTextNode(` Page ${currentPage} of ${totalPages} `));
+    paginationDiv.appendChild(nextButton);
+}
+
+// Modify fetchNonWikipediaContent to call paginateContent after updating the page data
 function fetchNonWikipediaContent() {
     const contentElements = document.querySelectorAll('p, h1, h2, h3, h4, h5, h6');
 
@@ -453,5 +574,9 @@ function fetchNonWikipediaContent() {
         return;
     }
 
-    modifyTextContentInOrder(contentElements, 1); // Maintain order for non-Wikipedia pages
+    // Modify text content with the existing styling from modifyTextContentInOrder
+    modifyTextContentInOrder(contentElements, 1);  // Maintain order for non-Wikipedia pages
+
+    // After modifying and styling content, paginate it
+    paginateContent(document.getElementById('textContainer'));
 }
