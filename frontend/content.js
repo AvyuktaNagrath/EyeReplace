@@ -3,11 +3,7 @@ console.log("Content script loaded and ready to receive messages.");
 
 let latestX = null;  // Store the latest X coordinate
 let latestY = null;  // Store the latest Y coordinate
-
-// Store previous coordinates for focus checking
-let storedCoordinates = [];
-let focusTimer = null;  // Timer for checking focus
-let isFocused = false;  // Flag to track focus status
+let storedCoordinates = [];  // Array to hold recent coordinates for focus checking
 
 // WebSocket connection to receive gaze data from Flask backend
 const socket = io('http://143.215.63.97:5000'); // Connect to the WebSocket
@@ -23,15 +19,12 @@ socket.on('screen_gaze_data', function (data) {
         latestX = data.x;  // Update the latest gaze coordinates
         latestY = data.y;
         console.log(`Received Screen Gaze Coordinates: (${latestX}, ${latestY})`);
-
-        // Store the latest coordinates for focus checking
-        storedCoordinates.push({ x: latestX, y: latestY });
+        
+        // Store coordinates for focus checking
+        checkFocus(latestX, latestY);
         
         // Continuously project red dot at the latest gaze coordinates
         projectRedDot(latestX, latestY);
-        
-        // Check focus with the new gaze coordinates
-        checkFocus();
     }
 });
 
@@ -58,33 +51,27 @@ function projectRedDot(x, y) {
     }
 }
 
-// Function to check if the latest gaze coordinates are within 50 pixels for 2 seconds
-function checkFocus() {
-    // Check if the latest coordinates are within a box of 50 pixels
-    const focusBoxSize = 50;
+// Function to check if gaze coordinates are focused
+function checkFocus(x, y) {
+    storedCoordinates.push({ x, y, time: Date.now() });
 
-    const isInFocus = storedCoordinates.some(coordinate => {
-        return (latestX >= coordinate.x - focusBoxSize && latestX <= coordinate.x + focusBoxSize) &&
-               (latestY >= coordinate.y - focusBoxSize && latestY <= coordinate.y + focusBoxSize);
-    });
+    // Keep only the last 100 coordinates for checking focus
+    if (storedCoordinates.length > 100) {
+        storedCoordinates.shift();
+    }
 
-    if (isInFocus) {
-        // If focus is active, increment the timer
-        if (!isFocused) {
-            // Start the timer if focus just became active
-            focusTimer = setTimeout(() => {
-                // Run the detect word functionality after 2 seconds of focus
-                const detectedWord = detectWordAtCoordinates(latestX, latestY);
-                // Send the detected word to the Chrome extension
-                chrome.runtime.sendMessage({ action: 'detectedWord', word: detectedWord });
-            }, 2000);
-            isFocused = true;
-        }
-    } else {
-        // Reset focus if gaze moves out of the box
-        if (isFocused) {
-            clearTimeout(focusTimer);
-            isFocused = false;
+    // Check if the last coordinates are within 50 pixels for 2 seconds
+    const now = Date.now();
+    const recentCoords = storedCoordinates.filter(coord => now - coord.time <= 2000);
+
+    if (recentCoords.length > 0) {
+        const firstCoord = recentCoords[0];
+        const distance = Math.sqrt(Math.pow(x - firstCoord.x, 2) + Math.pow(y - firstCoord.y, 2));
+
+        if (distance <= 50) {
+            // Call the word detection functionality if conditions are met
+            const detectedWord = detectWordAtCoordinates(x, y);
+            sendDetectedWord(detectedWord);
         }
     }
 }
@@ -124,6 +111,11 @@ function detectWordAtCoordinates(x, y) {
 
     console.log(`Detected word at coordinates (${x}, ${y}): ${closestWord}`);
     return closestWord;
+}
+
+// Function to send the detected word to the popup
+function sendDetectedWord(word) {
+    chrome.runtime.sendMessage({ action: 'detectedWord', word: word });
 }
 
 // Function to store original styles before modifying
@@ -221,28 +213,13 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
     container.style.fontFamily = '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'; // Clean font family
     container.style.borderRadius = '0';  // No rounded corners to span the full screen
     container.style.boxShadow = 'none';  // Remove box shadow for full-width text
-    container.style.margin = '0';  // Remove default margins
-    
+    container.style.margin = '0';  // No margin to span the entire screen horizontally
+    container.style.padding = '0 20px';  // Add horizontal padding for readability
+    container.style.lineHeight = '1.6';  // Increased line height for readability
+
     contentElements.forEach(element => {
-        if (element.tagName === 'H1' || element.tagName === 'H2' || element.tagName === 'H3' || 
-            element.tagName === 'H4' || element.tagName === 'H5' || element.tagName === 'H6' || 
-            element.tagName === 'P') {
-            const clonedElement = element.cloneNode(true);
-            modifyTextLayout(clonedElement, scaleFactor);  // Adjust layout based on viewport size
-            styleHeaders(clonedElement);  // Style headers if applicable
-            container.appendChild(clonedElement);
-        }
-    });
+        const tagName = element.tagName.toLowerCase();
+        const newElement = document.createElement(tagName);
 
-    document.body.innerHTML = '';  // Clear the body
-    document.body.appendChild(container);  // Add the modified content
-    document.body.style.overflow = 'hidden'; // Disable scrolling to avoid content jumping
-}
-
-// Send the stored gaze data to the content script on demand
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.action === 'processGazeData') {
-        const scaleFactor = request.scaleFactor || 1;  // Default scale factor
-        modifyTextContentInOrder(document.body.children, scaleFactor);  // Modify the text content
-    }
-});
+        // Handle paragraphs
+        if (tagName === 'p') {
