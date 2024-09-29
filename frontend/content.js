@@ -134,27 +134,20 @@ function sendWordToBackendViaSocket(word, context) {
 }
 
 function projectRedDot(x, y) {
-    // Get the device pixel ratio to adjust for CSS scaling
     const pixelRatio = window.devicePixelRatio;
+    const adjustedX = x / pixelRatio;
+    const adjustedY = y / pixelRatio;
 
-    // Adjust Beam SDK coordinates for device pixel ratio
-    const adjustedX = x / pixelRatio;  // Scale down the x-coordinate
-    const adjustedY = y / pixelRatio;  // Scale down the y-coordinate
-
-    // Get the content area offset relative to the viewport
     const contentRect = document.documentElement.getBoundingClientRect();
-    const offsetX = contentRect.left;  // Horizontal offset due to browser chrome
-    const offsetY = contentRect.top;   // Vertical offset due to browser chrome
+    const offsetX = contentRect.left;
+    const offsetY = contentRect.top;
 
-    // Apply constant offset correction
     const constantXOffset = 5;  // Replace with your measured X offset
     const constantYOffset = 137;  // Replace with your measured Y offset
 
-    // Subtract the constant offset
-    const finalX = (adjustedX - offsetX - constantXOffset) + window.scrollX;
-    const finalY = (adjustedY - offsetY - constantYOffset) + window.scrollY;
+    const finalX = (adjustedX - offsetX - constantXOffset) + window.scrollX - document.body.scrollLeft;
+    const finalY = (adjustedY - offsetY - constantYOffset) + window.scrollY - document.body.scrollTop;
 
-    // Project the red dot at the final adjusted coordinates
     const oldDot = document.getElementById('red-dot');
     if (oldDot) {
         oldDot.style.left = `${finalX}px`;
@@ -173,8 +166,8 @@ function projectRedDot(x, y) {
         dot.style.pointerEvents = 'none';
         document.body.appendChild(dot);
     }
-
 }
+
 
 socket.on('synonym_response', function (data) {
     const { originalWord, simpler_word } = data;
@@ -185,8 +178,8 @@ socket.on('synonym_response', function (data) {
 // Function to detect the word at the red dot's adjusted coordinates
 function detectWordAtRedDot(x, y) {
     const pixelRatio = window.devicePixelRatio;
-    const adjustedX = x / pixelRatio;  // Scale down the x-coordinate
-    const adjustedY = y / pixelRatio;  // Scale down the y-coordinate
+    const adjustedX = x / pixelRatio;
+    const adjustedY = y / pixelRatio;
 
     const contentRect = document.documentElement.getBoundingClientRect();
     const offsetX = contentRect.left;
@@ -195,12 +188,12 @@ function detectWordAtRedDot(x, y) {
     const constantXOffset = 5;  // Your X offset
     const constantYOffset = 137;  // Your Y offset
 
-    // Apply the same final coordinate adjustments
-    const finalX = (adjustedX - offsetX - constantXOffset) + window.scrollX;
-    const finalY = (adjustedY - offsetY - constantYOffset) + window.scrollY;
+    const finalX = (adjustedX - offsetX - constantXOffset) + window.scrollX - document.body.scrollLeft;
+    const finalY = (adjustedY - offsetY - constantYOffset) + window.scrollY - document.body.scrollTop;
 
     return detectWordAtCoordinates(finalX, finalY);  // Detect the word at the final coordinates
 }
+
 
 // Function to detect the word at specific coordinates
 function detectWordAtCoordinates(x, y) {
