@@ -3,7 +3,10 @@ console.log("Content script loaded and ready to receive messages.");
 
 let latestX = null;  // Store the latest X coordinate
 let latestY = null;  // Store the latest Y coordinate
-let storedCoordinates = [];  // Array to hold recent coordinates for focus checking
+let storedCoordinates = [];  // Store recent gaze coordinates for focus checking
+let focusTimeout;  // Timeout for focus check
+const FOCUS_DURATION = 2000;  // Duration to check focus (2 seconds)
+const FOCUS_RADIUS = 50;  // Radius for focus detection
 
 // WebSocket connection to receive gaze data from Flask backend
 const socket = io('http://143.215.63.97:5000'); // Connect to the WebSocket
@@ -20,13 +23,44 @@ socket.on('screen_gaze_data', function (data) {
         latestY = data.y;
         console.log(`Received Screen Gaze Coordinates: (${latestX}, ${latestY})`);
         
-        // Store coordinates for focus checking
-        checkFocus(latestX, latestY);
-        
         // Continuously project red dot at the latest gaze coordinates
         projectRedDot(latestX, latestY);
+        
+        // Call checkFocus to determine if gaze is focused
+        checkFocus(latestX, latestY);
     }
 });
+
+// Function to check if gaze coordinates remain in focus
+function checkFocus(x, y) {
+    storedCoordinates.push({ x, y, timestamp: Date.now() });
+    
+    // Filter stored coordinates to keep only recent ones
+    const now = Date.now();
+    storedCoordinates = storedCoordinates.filter(coord => now - coord.timestamp < FOCUS_DURATION);
+    
+    if (storedCoordinates.length > 0) {
+        // Calculate if the coordinates are within the defined focus area
+        const firstCoord = storedCoordinates[0];
+        const distance = Math.sqrt(
+            Math.pow(x - firstCoord.x, 2) +
+            Math.pow(y - firstCoord.y, 2)
+        );
+
+        if (distance <= FOCUS_RADIUS) {
+            clearTimeout(focusTimeout);  // Clear previous timeout if still focused
+            focusTimeout = setTimeout(() => {
+                // Call detect word functionality after focus duration
+                const detectedWord = detectWordAtCoordinates(x, y);
+                console.log(`Detected word: ${detectedWord}`);
+                // Send the detected word back to the popup for display
+                chrome.runtime.sendMessage({ action: 'detectedWord', word: detectedWord });
+            }, FOCUS_DURATION);
+        } else {
+            clearTimeout(focusTimeout);  // Clear timeout if focus is lost
+        }
+    }
+}
 
 // Function to project red dot using screen gaze coordinates
 function projectRedDot(x, y) {
@@ -48,31 +82,6 @@ function projectRedDot(x, y) {
         dot.style.zIndex = 9999;
         dot.style.pointerEvents = 'none';
         document.body.appendChild(dot);
-    }
-}
-
-// Function to check if gaze coordinates are focused
-function checkFocus(x, y) {
-    storedCoordinates.push({ x, y, time: Date.now() });
-
-    // Keep only the last 100 coordinates for checking focus
-    if (storedCoordinates.length > 100) {
-        storedCoordinates.shift();
-    }
-
-    // Check if the last coordinates are within 50 pixels for 2 seconds
-    const now = Date.now();
-    const recentCoords = storedCoordinates.filter(coord => now - coord.time <= 2000);
-
-    if (recentCoords.length > 0) {
-        const firstCoord = recentCoords[0];
-        const distance = Math.sqrt(Math.pow(x - firstCoord.x, 2) + Math.pow(y - firstCoord.y, 2));
-
-        if (distance <= 50) {
-            // Call the word detection functionality if conditions are met
-            const detectedWord = detectWordAtCoordinates(x, y);
-            sendDetectedWord(detectedWord);
-        }
     }
 }
 
@@ -111,11 +120,6 @@ function detectWordAtCoordinates(x, y) {
 
     console.log(`Detected word at coordinates (${x}, ${y}): ${closestWord}`);
     return closestWord;
-}
-
-// Function to send the detected word to the popup
-function sendDetectedWord(word) {
-    chrome.runtime.sendMessage({ action: 'detectedWord', word: word });
 }
 
 // Function to store original styles before modifying
@@ -214,12 +218,57 @@ function modifyTextContentInOrder(contentElements, scaleFactor = 1) {
     container.style.borderRadius = '0';  // No rounded corners to span the full screen
     container.style.boxShadow = 'none';  // Remove box shadow for full-width text
     container.style.margin = '0';  // No margin to span the entire screen horizontally
-    container.style.padding = '0 20px';  // Add horizontal padding for readability
-    container.style.lineHeight = '1.6';  // Increased line height for readability
-
+    container.style.padding = '0';  // No padding for the entire container
+    
     contentElements.forEach(element => {
-        const tagName = element.tagName.toLowerCase();
-        const newElement = document.createElement(tagName);
+        const clonedElement = element.cloneNode(true);  // Clone to preserve original
+        adjustTextLayout(clonedElement, scaleFactor);  // Adjust text layout
 
-        // Handle paragraphs
-        if (tagName === 'p') {
+        // Style headers
+        if (clonedElement.tagName.toLowerCase().startsWith('h')) {
+            styleHeaders(clonedElement);
+        }
+
+        container.appendChild(clonedElement);  // Append to container
+    });
+
+    // Replace body content with styled container
+    document.body.innerHTML = '';
+    document.body.appendChild(container);
+    modifyElementsAfterModification(container);
+}
+
+// Modify elements after initial modifications
+function modifyElementsAfterModification(container) {
+    // Adjust styles for all elements within the container
+    const allElements = container.querySelectorAll('*');
+    allElements.forEach(el => {
+        el.style.margin = '0';  // Remove margins for consistent spacing
+        el.style.padding = '0';  // Remove padding for consistent spacing
+    });
+
+    // Add overflow styling
+    container.style.overflowY = 'scroll';
+}
+
+// Function to start the eye-optimized view
+function startEyeOptimizedView() {
+    storeOriginalStylesAndContent();  // Store original styles and content
+    const bodyElements = document.body.children;  // Get all body elements
+    const contentElements = Array.from(bodyElements).filter(el => el.nodeType === Node.ELEMENT_NODE);  // Filter only elements
+
+    // Modify the text content in order
+    modifyTextContentInOrder(contentElements);
+
+    // Set overflow style to hidden for optimal reading experience
+    document.body.style.overflow = 'hidden';  // Disable scroll during view
+}
+
+// Event listener for starting the optimized view
+document.getElementById('start-optimize').addEventListener('click', startEyeOptimizedView);
+
+// Event listener for resetting the page
+document.getElementById('reset-page').addEventListener('click', restoreOriginalStylesAndContent);
+
+// Initial setup for red dot and gaze detection
+projectRedDot(0, 0);  // Initialize red dot at default position
