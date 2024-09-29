@@ -17,12 +17,24 @@ socket.on('screen_gaze_data', function (data) {
     if (data.x !== undefined && data.y !== undefined) {
         latestX = data.x;  // Update the latest gaze coordinates
         latestY = data.y;
-        console.log(`Received Screen Gaze Coordinates: (${latestX}, ${latestY})`);
+        //console.log(`Received Screen Gaze Coordinates: (${latestX}, ${latestY})`);
         
         // Continuously project red dot at the latest gaze coordinates
         projectRedDot(latestX, latestY);
     }
 });
+
+// Listen for synonym responses from the backend via WebSocket
+socket.on('synonym_response', function (data) {
+    const { originalWord, simpler_word } = data;
+    console.log(`Received synonym for '${originalWord}': '${simpler_word}'`);
+    replaceWordInDOM(originalWord, simpler_word);
+});
+
+// Function to send detected word to backend via WebSocket
+function sendWordToBackendViaSocket(word, context) {
+    socket.emit('word_detection', { word, context });
+}
 
 // Function to project red dot using screen gaze coordinates
 function projectRedDot(x, y) {
@@ -84,6 +96,62 @@ function detectWordAtCoordinates(x, y) {
     return closestWord;
 }
 
+// Function to replace the word in the DOM with its synonym
+function replaceWordInDOM(originalWord, simplerWord) {
+    const elements = document.body.getElementsByTagName('*');
+    for (let el of elements) {
+        for (let node of el.childNodes) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const updatedText = node.nodeValue.replace(originalWord, simplerWord);
+                node.nodeValue = updatedText;
+                console.log(`Replaced '${originalWord}' with '${simplerWord}' in the DOM.`);
+            }
+        }
+    }
+}
+
+// Messaging listener to handle popup.js requests for actions
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'detectWord') {
+        if (latestX !== null && latestY !== null) {
+            console.log(`Detecting word at (${latestX}, ${latestY})`);
+            const detectedWord = detectWordAtCoordinates(latestX, latestY);
+            const context = getContextFromDOM(latestX, latestY);  // Get context
+            sendWordToBackendViaSocket(detectedWord, context);  // Use WebSocket instead of fetch
+            sendResponse({ word: detectedWord });
+        } else {
+            console.error("No valid gaze coordinates available.");
+            sendResponse({ word: null });
+        }
+    } else if (message.action === 'startEyeOptimize') {
+        storeOriginalStylesAndContent();
+        fetchNonWikipediaContent();
+        sendResponse({ status: 'Text optimized and scroll-based navigation added.' });
+    } else if (message.action === 'resetPage') {
+        restoreOriginalStylesAndContent();
+        sendResponse({ status: 'Page reset to original state.' });
+    }
+});
+
+// Function to get context around the detected word (e.g., 3 words before and after)
+function getContextFromDOM(x, y) {
+    const range = document.caretRangeFromPoint(x, y);
+    if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+        const textNode = range.startContainer;
+        const text = textNode.textContent;
+        const words = text.split(/\s+/).filter(w => w.length > 0);
+        const wordIndex = words.findIndex(word => text.includes(word));
+
+        // Get 3 words before and after the detected word
+        const contextStart = Math.max(0, wordIndex - 3);
+        const contextEnd = Math.min(words.length, wordIndex + 4);
+        const context = words.slice(contextStart, contextEnd).join(' ');
+
+        console.log(`Context around the word: ${context}`);
+        return context;
+    }
+    return '';
+}
 // Function to store original styles before modifying
 let originalStyles = new Map();
 let originalBodyContent = '';
@@ -221,23 +289,3 @@ function fetchNonWikipediaContent() {
 
     modifyTextContentInOrder(contentElements, 1); // Maintain order for non-Wikipedia pages
 }
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'detectWord') {
-        if (latestX !== null && latestY !== null) {
-            console.log(`Detecting word at (${latestX}, ${latestY})`);
-            const detectedWord = detectWordAtCoordinates(latestX, latestY);
-            sendResponse({ word: detectedWord });
-        } else {
-            console.error("No valid gaze coordinates available.");
-            sendResponse({ word: null });
-        }
-    } else if (message.action === 'startEyeOptimize') {
-        storeOriginalStylesAndContent();
-        fetchNonWikipediaContent();
-        sendResponse({ status: 'Text optimized and scroll-based navigation added.' });
-    } else if (message.action === 'resetPage') {
-        restoreOriginalStylesAndContent();
-        sendResponse({ status: 'Page reset to original state.' });
-    }
-});
