@@ -5,6 +5,8 @@ let focusStartTime = null;  // Track the time the focus started
 let lastWordX = null;  // X coordinate of the last focused word
 let lastWordY = null;  // Y coordinate of the last focused word
 
+let selectedModeInContent = null;
+
 const FOCUS_THRESHOLD_MS = 2000;  // 2 second threshold to trigger word replacement
 const FOCUS_RADIUS_PX = 50;  // Allowable pixel radius for gaze drift
 
@@ -255,8 +257,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } else if (message.action === 'resetPage') {
         restoreOriginalStylesAndContent();
         sendResponse({ status: 'Page reset to original state.' });
+    } 
+    // NEW: Handling the setMode action from popup.js
+    else if (message.action === 'setMode' && message.mode) {
+        // Set the global variable to the selected mode
+        selectedModeInContent = message.mode;
+        console.log(`Mode set to: ${selectedModeInContent} in content.js`);
+
+        // Optional: Respond back to popup.js with confirmation
+        sendResponse({ status: `Mode set to ${selectedModeInContent}` });
     }
 });
+
 
 // Function to get context around the detected word (e.g., 3 words before and after)
 function getContextFromDOM(x, y) {

@@ -31,6 +31,9 @@
         button:hover {
             background-color: #2e7d32; /* Darker green on hover */
         }
+        button.active {
+            background-color: #007bff; /* Blue background for active button */
+        }
         table {
             width: 100%;
             margin-top: 10px;
@@ -53,6 +56,12 @@
 
     <!-- Button to reset the page -->
     <button id="reset-page">Reset Page</button>
+
+    <!-- Section for ESL, Dyslexia, and Simplify Mode -->
+    <h1>Select Mode</h1>
+    <button id="btn-esl">ESL</button>
+    <button id="btn-dyslexia">Dyslexia</button>
+    <button id="btn-simplify">Simplify</button>
 
     <script src="popup.js"></script>
 </body>

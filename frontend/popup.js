@@ -7,14 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.tabs.sendMessage(tabs[0].id, { action: 'detectWord' }, (response) => {
             if (response && response.word) {
                 console.log(`Detected word: ${response.word}`);
-                
             } else {
                 console.error("No word detected.");
-                
             }
         });
     });
-
 
     // Button to start the eye-optimized view
     document.getElementById("start-optimize").addEventListener("click", () => {
@@ -41,4 +38,48 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     });
+
+    // Global variable to store the current mode selected
+    let selectedMode = null;
+
+    // Helper function to remove active class from all buttons
+    function clearActiveButtons() {
+        document.getElementById('btn-esl').classList.remove('active');
+        document.getElementById('btn-dyslexia').classList.remove('active');
+        document.getElementById('btn-simplify').classList.remove('active');
+    }
+
+    // Add event listeners for each button
+    document.getElementById('btn-esl').addEventListener('click', () => {
+        clearActiveButtons();  // Clear active state from all buttons
+        document.getElementById('btn-esl').classList.add('active');  // Set this button as active
+        selectedMode = 'esl';  // Set global variable
+        console.log("ESL mode selected");
+        sendSelectedModeToContentScript(selectedMode);  // Send the selected mode to content.js
+    });
+
+    document.getElementById('btn-dyslexia').addEventListener('click', () => {
+        clearActiveButtons();
+        document.getElementById('btn-dyslexia').classList.add('active');
+        selectedMode = 'dyslexia';
+        console.log("Dyslexia mode selected");
+        sendSelectedModeToContentScript(selectedMode);
+    });
+
+    document.getElementById('btn-simplify').addEventListener('click', () => {
+        clearActiveButtons();
+        document.getElementById('btn-simplify').classList.add('active');
+        selectedMode = 'simplify';
+        console.log("Simplify mode selected");
+        sendSelectedModeToContentScript(selectedMode);
+    });
+
+    // Function to send the selected mode to content.js
+    function sendSelectedModeToContentScript(mode) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'setMode', mode: mode }, (response) => {
+                console.log(`Mode "${mode}" sent to content script.`);
+            });
+        });
+    }
 });
