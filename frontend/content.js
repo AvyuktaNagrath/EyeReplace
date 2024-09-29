@@ -111,7 +111,12 @@ function getTextNodeByWord(word) {
 
 // Function to send detected word to backend via WebSocket
 function sendWordToBackendViaSocket(word, context) {
-    socket.emit('word_detection', { word, context });
+    if (!word || word === "blank") {
+        console.log("No valid word detected, skipping socket emission.");
+    } else {
+        socket.emit('word_detection', { word, context });
+        console.log(`Sent word: ${word}, with context: ${context}`);
+    }
 }
 
 function projectRedDot(x, y) {

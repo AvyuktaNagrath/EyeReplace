@@ -47,7 +47,7 @@ def get_simpler_word(word, context):
                 "role": "user",
                 "content": f"Take in the context as to not change prepositions, pronouns, conjunctions, determiners, and auxiliary verbs: '{context}', now please give a simpler synonym for the word: '{word}', but ONLY write the word itself, no explanation."
             }],
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             temperature=0.4,
             max_tokens=4,
             stream=False
