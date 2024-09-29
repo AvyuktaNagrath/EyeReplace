@@ -3,3 +3,4 @@ numpy
 beam-eye-tracker
 openai
 Flask-SocketIO
+python-dotenv
