@@ -25,7 +25,7 @@ def run_tracker():
                 # Emit gaze data to connected clients
                 socketio.emit('screen_gaze_data', screen_gaze_data)
                 print(f"Sent Gaze on Screen: {screen_gaze_data}")
-            time.sleep(1/60)  # Adjust the data frequency if needed
+            time.sleep(1/20)  # Adjust the data frequency if needed
         else:
             print("No connection with tracker server")
             time.sleep(2)

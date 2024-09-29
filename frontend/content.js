@@ -1,88 +1,92 @@
 // Debugging: Log that the content script has loaded
 console.log("Content script loaded and ready to receive messages.");
 
-// Now that the Socket.IO client is self-hosted, we can directly create the Socket.IO connection
-const socket = io('http://143.215.63.97:5000');
+let latestX = null;  // Store the latest X coordinate
+let latestY = null;  // Store the latest Y coordinate
+
+// WebSocket connection to receive gaze data from Flask backend
+const socket = io('http://143.215.63.97:5000'); // Connect to the WebSocket
 
 // Event listener for WebSocket connection
 socket.on('connect', function () {
     console.log("Socket.IO connection established with Flask backend.");
 });
 
-// Debug: Listen for all events coming from the server
-socket.onAny((eventName, data) => {
-    console.log(`Received event: ${eventName}`, data);
-});
-
 // Event listener for receiving gaze data from the Flask backend
 socket.on('screen_gaze_data', function (data) {
     if (data.x !== undefined && data.y !== undefined) {
-        console.log(`Received Screen Gaze: Coordinates: (${data.x}, ${data.y})`);
-
-        // Project red dot on the screen using these coordinates
-        projectRedDot(data.x, data.y);
+        latestX = data.x;  // Update the latest gaze coordinates
+        latestY = data.y;
+        console.log(`Received Screen Gaze Coordinates: (${latestX}, ${latestY})`);
+        
+        // Continuously project red dot at the latest gaze coordinates
+        projectRedDot(latestX, latestY);
     }
-});
-
-// Event listener for WebSocket errors
-socket.on('connect_error', function (error) {
-    console.error("Socket.IO connection error:", error);
-});
-
-// Event listener for WebSocket closing
-socket.on('disconnect', function () {
-    console.log("Socket.IO connection closed.");
 });
 
 // Function to project red dot using screen gaze coordinates
 function projectRedDot(x, y) {
-    console.log(`Projecting red dot at coordinates: (${x}, ${y})`);  // Debugging
-
-    // Remove old red dot if it exists
     const oldDot = document.getElementById('red-dot');
     if (oldDot) {
-        oldDot.remove();
+        oldDot.style.left = `${x + window.scrollX}px`;  // Adjust for scrolling position
+        oldDot.style.top = `${y + window.scrollY}px`;   // Adjust for scrolling position
+    } else {
+        // Create new red dot if it doesn't exist
+        const dot = document.createElement('div');
+        dot.id = 'red-dot';
+        dot.style.position = 'absolute';
+        dot.style.left = `${x + window.scrollX}px`;  // Adjust for scrolling position
+        dot.style.top = `${y + window.scrollY}px`;   // Adjust for scrolling position
+        dot.style.width = '10px';
+        dot.style.height = '10px';
+        dot.style.backgroundColor = 'red';
+        dot.style.borderRadius = '50%';
+        dot.style.zIndex = 9999;
+        dot.style.pointerEvents = 'none';
+        document.body.appendChild(dot);
     }
-
-    // Create new red dot
-    const dot = document.createElement('div');
-    dot.id = 'red-dot';
-    dot.style.position = 'absolute';
-    dot.style.left = `${x + window.scrollX}px`;  // Adjust for scrolling position
-    dot.style.top = `${y + window.scrollY}px`;   // Adjust for scrolling position
-    dot.style.width = '10px';
-    dot.style.height = '10px';
-    dot.style.backgroundColor = 'red';
-    dot.style.borderRadius = '50%';
-    dot.style.zIndex = 9999;
-    dot.style.pointerEvents = 'none';
-    document.body.appendChild(dot);
-
-    console.log("Red dot projected successfully.");  // Debugging
 }
 
-// Messaging listener to handle the popup button clicks
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'startEyeOptimize') {
-        storeOriginalStylesAndContent();
-        fetchNonWikipediaContent();
-        sendResponse({ status: 'Text optimized and scroll-based navigation added.' });
+// Function to detect the word at the current gaze coordinates
+function detectWordAtCoordinates(x, y) {
+    const range = document.caretRangeFromPoint(x, y);
+    let closestWord = 'blank';
+
+    if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+        const textNode = range.startContainer;
+        const text = textNode.textContent;
+        const words = text.split(/\s+/).filter(w => w.length > 0);
+
+        let closestDistance = 70;  // 70 pixels radius
+
+        words.forEach(word => {
+            const wordRange = document.createRange();
+            const wordIndex = text.indexOf(word);
+            wordRange.setStart(textNode, wordIndex);
+            wordRange.setEnd(textNode, wordIndex + word.length);
+
+            const rects = wordRange.getClientRects();
+            for (const rect of rects) {
+                const distance = Math.sqrt(
+                    Math.pow(x - (rect.left + rect.width / 2), 2) +
+                    Math.pow(y - (rect.top + rect.height / 2), 2)
+                );
+
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestWord = word;
+                }
+            }
+        });
     }
 
-    if (message.action === 'resetPage') {
-        restoreOriginalStylesAndContent(); 
-        sendResponse({ status: 'Page reset to original state.' });
-    }
-});
-
-// Check if variables are already defined and persist them globally
-if (typeof originalStyles === 'undefined') {
-    var originalStyles = new Map();  
+    console.log(`Detected word at coordinates (${x}, ${y}): ${closestWord}`);
+    return closestWord;
 }
 
-if (typeof originalBodyContent === 'undefined') {
-    var originalBodyContent = ''; // Store the original body content
-}
+// Function to store original styles before modifying
+let originalStyles = new Map();
+let originalBodyContent = '';
 
 // Store the original styles and content before modifying them
 function storeOriginalStylesAndContent() {
@@ -217,3 +221,23 @@ function fetchNonWikipediaContent() {
 
     modifyTextContentInOrder(contentElements, 1); // Maintain order for non-Wikipedia pages
 }
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'detectWord') {
+        if (latestX !== null && latestY !== null) {
+            console.log(`Detecting word at (${latestX}, ${latestY})`);
+            const detectedWord = detectWordAtCoordinates(latestX, latestY);
+            sendResponse({ word: detectedWord });
+        } else {
+            console.error("No valid gaze coordinates available.");
+            sendResponse({ word: null });
+        }
+    } else if (message.action === 'startEyeOptimize') {
+        storeOriginalStylesAndContent();
+        fetchNonWikipediaContent();
+        sendResponse({ status: 'Text optimized and scroll-based navigation added.' });
+    } else if (message.action === 'resetPage') {
+        restoreOriginalStylesAndContent();
+        sendResponse({ status: 'Page reset to original state.' });
+    }
+});

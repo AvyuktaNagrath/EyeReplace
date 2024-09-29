@@ -3,24 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Red Dot Projector & Eye Replace Extension</title>
+    <title>Eye-Tracker Word Detector</title>
     <style>
         body {
-            width: 300px; /* Increased width for more content */
+            width: 300px;
             padding: 10px;
             font-family: Arial, sans-serif;
         }
-        input {
-            width: 100%;
-            margin-bottom: 10px;
-        }
         button {
             width: 100%;
-            padding: 5px;
+            padding: 10px;
             background-color: #007bff;
             color: white;
             border: none;
             cursor: pointer;
+            margin-bottom: 10px;
         }
         table {
             width: 100%;
@@ -35,17 +32,21 @@
     </style>
 </head>
 <body>
-    <h1>Red Dot Projector & Eye Replace Extension</h1>
-    
-    <h3>Enter Coordinates</h3>
-    <input type="number" id="x-coordinate" placeholder="X coordinate">
-    <input type="number" id="y-coordinate" placeholder="Y coordinate">
-    <button id="project-dot">Project Red Dot</button>
-    
-    <button id="start">Start Eye-Optimized View</button>
-    <button id="reset">Reset to Original</button>
+    <h1>Eye-Tracker Word Detector</h1>
 
-    <table id="result-table">
+    <!-- Button to detect words -->
+    <button id="detect-word">Detect Word at Coordinates</button>
+
+    <!-- Button to project red dot -->
+    <button id="project-dot">Project Red Dot</button>
+
+    <!-- Button to start the eye-optimized view -->
+    <button id="start-optimize">Start Eye-Optimized View</button>
+
+    <!-- Button to reset the page -->
+    <button id="reset-page">Reset Page</button>
+
+    <table>
         <tr>
             <td>Detected Word</td>
         </tr>
