@@ -114,7 +114,7 @@ def separate_word_punctuation(word):
     return word, prefix_punct, suffix_punct
 
 # Function to replace word with simpler synonym or translation based on mode
-def replace_word_based_on_mode(word, context, mode, is_first_word=False):
+def replace_word_based_on_mode(word, context, mode, language='Spanish', is_first_word=False):
     original_word = word
     word, prefix_punct, suffix_punct = separate_word_punctuation(word)
 
@@ -122,7 +122,7 @@ def replace_word_based_on_mode(word, context, mode, is_first_word=False):
     if mode == "simplify":
         new_word = get_simpler_word(word, context)
     elif mode == "esl":
-        new_word = get_translated_word(word, context)
+        new_word = get_translated_word(word, context, language)  # Pass the selected language
     elif mode == "dyslexia":
         new_word = get_dyslexia_synonym(word, context)
     else:
@@ -141,15 +141,18 @@ def handle_word_detection(data):
     word = data['word']
     context = data['context']
     mode = data.get('mode', 'simplify')  # Default mode is simplify if not provided
+    language = data.get('language', 'Spanish')  # Default language is Spanish if not provided
 
-    print(f"Received word: {word}, Context: {context}, Mode: {mode}")
+    print(f"Received word: {word}, Context: {context}, Mode: {mode}, Language: {language}")
 
-    simpler_word = replace_word_based_on_mode(word, context, mode)
+    # Pass the selected language to replace_word_based_on_mode for ESL mode
+    simpler_word = replace_word_based_on_mode(word, context, mode, language)
 
     if simpler_word:
         emit('synonym_response', {'originalWord': word, 'simpler_word': simpler_word})
     else:
         emit('synonym_response', {'originalWord': word, 'simpler_word': word})
+    
 
 # Start the eye tracker in the background when the app starts
 @socketio.on('connect')

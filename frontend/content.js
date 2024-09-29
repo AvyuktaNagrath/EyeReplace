@@ -6,6 +6,8 @@ let lastWordX = null;  // X coordinate of the last focused word
 let lastWordY = null;  // Y coordinate of the last focused word
 
 let selectedModeInContent = 'simplify';  // Default mode is set to 'simplify'
+let languageESL = 'Spanish';  // Default ESL language
+
 
 
 const FOCUS_THRESHOLD_MS = 2000;  // 2 second threshold to trigger word replacement
@@ -115,9 +117,19 @@ function sendWordToBackendViaSocket(word, context) {
     if (!word || word === "blank") {
         console.log("No valid word detected, skipping socket emission.");
     } else {
-        // Now include the selectedModeInContent to tell the backend which mode to use
-        socket.emit('word_detection', { word, context, mode: selectedModeInContent });
-        console.log(`Sent word: ${word}, with context: ${context} and mode: ${selectedModeInContent}`);
+        // Include selected language for ESL mode
+        let messageData = {
+            word: word,
+            context: context,
+            mode: selectedModeInContent
+        };
+
+        if (selectedModeInContent === 'esl') {
+            messageData.language = languageESL;  // Send selected language for ESL mode
+        }
+
+        socket.emit('word_detection', messageData);
+        console.log(`Sent word: ${word}, with context: ${context}, mode: ${selectedModeInContent}, language: ${languageESL}`);
     }
 }
 
@@ -265,7 +277,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         restoreOriginalStylesAndContent();
         sendResponse({ status: 'Page reset to original state.' });
     } 
-    // NEW: Handling the setMode action from popup.js
+    // Handling the setMode action from popup.js
     else if (message.action === 'setMode' && message.mode) {
         // Set the global variable to the selected mode
         selectedModeInContent = message.mode;
@@ -274,7 +286,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Optional: Respond back to popup.js with confirmation
         sendResponse({ status: `Mode set to ${selectedModeInContent}` });
     }
+    // NEW: Handling the setESL action for language selection from popup.js
+    else if (message.action === 'setESL' && message.language) {
+        // Set the global variable to the selected ESL language
+        languageESL = message.language;
+        console.log(`ESL language set to: ${languageESL} in content.js`);
+
+        // Optional: Respond back to popup.js with confirmation
+        sendResponse({ status: `Language set to ${languageESL}` });
+    }
 });
+
 
 
 // Function to get context around the detected word (e.g., 3 words before and after)

@@ -16,7 +16,7 @@
             color: #1b5e20; /* Dark green for header */
             text-align: center;
         }
-        button {
+        button, select {
             width: 100%;
             padding: 12px;
             background-color: #43a047; /* Green background */
@@ -28,28 +28,16 @@
             margin-bottom: 10px;
             transition: background-color 0.3s ease; /* Smooth hover effect */
         }
-        button:hover {
+        button:hover, select:hover {
             background-color: #2e7d32; /* Darker green on hover */
         }
         button.active {
             background-color: #007bff; /* Blue background for active button */
         }
-        table {
-            width: 100%;
-            margin-top: 10px;
-            border-collapse: collapse;
-        }
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-            background-color: #66bb6a; /* Light green for table cells */
-            color: #ffffff; /* White text */
-        }
     </style>
 </head>
 <body>
-    <h1>Eye-Tracker Word Detector</h1>
+    <h1>Markup Settings</h1>
 
     <!-- Button to start the eye-optimized view -->
     <button id="start-optimize">Start Eye-Optimized View</button>
@@ -62,6 +50,18 @@
     <button id="btn-esl">ESL</button>
     <button id="btn-dyslexia">Dyslexia</button>
     <button id="btn-simplify">Simplify</button>
+
+    <!-- Dropdown for selecting ESL translation language -->
+    <select id="language-select">
+        <option value="Spanish">Spanish</option>
+        <option value="French">French</option>
+        <option value="German">German</option>
+        <option value="Korean">Korean</option>
+        <option value="Chinese">Chinese</option>
+        <option value="Russian">Russian</option>
+        <option value="Arabic">Arabic</option>
+        <option value="Tagalog">Tagalog</option>
+    </select>
 
     <script src="popup.js"></script>
 </body>
