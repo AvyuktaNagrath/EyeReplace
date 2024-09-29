@@ -6,17 +6,17 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Detect Word button clicked");
 
         // Request word detection from content.js
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.sendMessage(tabs[0].id, { action: 'detectWord' }, (response) => {
-                if (response && response.word) {
-                    console.log(`Detected word: ${response.word}`);
-                    document.getElementById('detected-word').innerText = response.word || 'blank';
-                } else {
-                    console.error("No word detected.");
-                    document.getElementById('detected-word').innerText = 'No word detected';
-                }
-            });
-        });
+        // chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        //     chrome.tabs.sendMessage(tabs[0].id, { action: 'detectWord' }, (response) => {
+        //         if (response && response.word) {
+        //             console.log(`Detected word: ${response.word}`);
+        //             document.getElementById('detected-word').innerText = response.word || 'blank';
+        //         } else {
+        //             console.error("No word detected.");
+        //             document.getElementById('detected-word').innerText = 'No word detected';
+        //         }
+        //     });
+        // });
     });
 
     // Button to project a red dot based on the current gaze coordinates
