@@ -1,35 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Popup script loaded");
 
-    // Button to detect words based on the current gaze coordinates
-    document.getElementById("detect-word").addEventListener("click", () => {
-        console.log("Detect Word button clicked");
-
-        // Request word detection from content.js
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.sendMessage(tabs[0].id, { action: 'detectWord' }, (response) => {
-                if (response && response.word) {
-                    console.log(`Detected word: ${response.word}`);
-                    document.getElementById('detected-word').innerText = response.word || 'blank';
-                } else {
-                    console.error("No word detected.");
-                    document.getElementById('detected-word').innerText = 'No word detected';
-                }
-            });
+    // Automatically run the function when popup is opened or script is loaded
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        // Send a message to the content script to detect the word automatically
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'detectWord' }, (response) => {
+            if (response && response.word) {
+                console.log(`Detected word: ${response.word}`);
+                
+            } else {
+                console.error("No word detected.");
+                
+            }
         });
     });
 
-    // Button to project a red dot based on the current gaze coordinates
-    document.getElementById("project-dot").addEventListener("click", () => {
-        console.log("Project Red Dot button clicked");
-
-        // Request red dot projection from content.js
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.sendMessage(tabs[0].id, { action: 'projectRedDot' }, (response) => {
-                console.log(response.status);
-            });
-        });
-    });
 
     // Button to start the eye-optimized view
     document.getElementById("start-optimize").addEventListener("click", () => {

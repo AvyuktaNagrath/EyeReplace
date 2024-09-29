@@ -3,21 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eye-Tracker Word Detector</title>
+    <title>EyeReplace</title>
     <style>
         body {
             width: 300px;
             padding: 10px;
             font-family: Arial, sans-serif;
+            background-color: #e8f5e9; /* Light green background */
+            color: #ffffff; /* White text color */
+        }
+        h1 {
+            color: #1b5e20; /* Dark green for header */
+            text-align: center;
         }
         button {
             width: 100%;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
+            padding: 12px;
+            background-color: #43a047; /* Green background */
+            color: #ffffff; /* White text */
             border: none;
+            border-radius: 5px; /* Rounded corners */
+            font-size: 16px;
             cursor: pointer;
             margin-bottom: 10px;
+            transition: background-color 0.3s ease; /* Smooth hover effect */
+        }
+        button:hover {
+            background-color: #2e7d32; /* Darker green on hover */
         }
         table {
             width: 100%;
@@ -28,6 +40,8 @@
             border: 1px solid #ddd;
             padding: 8px;
             text-align: center;
+            background-color: #66bb6a; /* Light green for table cells */
+            color: #ffffff; /* White text */
         }
     </style>
 </head>
@@ -39,7 +53,6 @@
 
     <!-- Button to reset the page -->
     <button id="reset-page">Reset Page</button>
-
 
     <script src="popup.js"></script>
 </body>
