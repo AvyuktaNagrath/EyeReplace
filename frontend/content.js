@@ -19,6 +19,7 @@ socket.on('screen_gaze_data', function (data) {
         latestY = data.y;
         //console.log(`Received Screen Gaze Coordinates: (${latestX}, ${latestY})`);
         
+        
         // Continuously project red dot at the latest gaze coordinates
         projectRedDot(latestX, latestY);
     }
@@ -36,19 +37,38 @@ function sendWordToBackendViaSocket(word, context) {
     socket.emit('word_detection', { word, context });
 }
 
-// Function to project red dot using screen gaze coordinates
 function projectRedDot(x, y) {
+    // Get the device pixel ratio to adjust for CSS scaling
+    const pixelRatio = window.devicePixelRatio;
+
+    // Adjust Beam SDK coordinates for device pixel ratio
+    const adjustedX = x / pixelRatio;  // Scale down the x-coordinate
+    const adjustedY = y / pixelRatio;  // Scale down the y-coordinate
+
+    // Get the content area offset relative to the viewport
+    const contentRect = document.documentElement.getBoundingClientRect();
+    const offsetX = contentRect.left;  // Horizontal offset due to browser chrome
+    const offsetY = contentRect.top;   // Vertical offset due to browser chrome
+
+    // Apply constant offset correction
+    const constantXOffset = 5;  // Replace with your measured X offset
+    const constantYOffset = 127;  // Replace with your measured Y offset
+
+    // Subtract the constant offset
+    const finalX = (adjustedX - offsetX - constantXOffset) + window.scrollX;
+    const finalY = (adjustedY - offsetY - constantYOffset) + window.scrollY;
+
+    // Project the red dot at the final adjusted coordinates
     const oldDot = document.getElementById('red-dot');
     if (oldDot) {
-        oldDot.style.left = `${x + window.scrollX}px`;  // Adjust for scrolling position
-        oldDot.style.top = `${y + window.scrollY}px`;   // Adjust for scrolling position
+        oldDot.style.left = `${finalX}px`;
+        oldDot.style.top = `${finalY}px`;
     } else {
-        // Create new red dot if it doesn't exist
         const dot = document.createElement('div');
         dot.id = 'red-dot';
         dot.style.position = 'absolute';
-        dot.style.left = `${x + window.scrollX}px`;  // Adjust for scrolling position
-        dot.style.top = `${y + window.scrollY}px`;   // Adjust for scrolling position
+        dot.style.left = `${finalX}px`;
+        dot.style.top = `${finalY}px`;
         dot.style.width = '10px';
         dot.style.height = '10px';
         dot.style.backgroundColor = 'red';
@@ -57,9 +77,35 @@ function projectRedDot(x, y) {
         dot.style.pointerEvents = 'none';
         document.body.appendChild(dot);
     }
+
 }
 
-// Function to detect the word at the current gaze coordinates
+
+
+// Function to detect the word at the red dot's adjusted coordinates
+function detectWordAtRedDot(x, y) {
+    // Apply the same constant offsets as used in projectRedDot
+    const pixelRatio = window.devicePixelRatio;
+
+    const adjustedX = x / pixelRatio;  // Scale down the x-coordinate
+    const adjustedY = y / pixelRatio;  // Scale down the y-coordinate
+
+    const contentRect = document.documentElement.getBoundingClientRect();
+    const offsetX = contentRect.left;
+    const offsetY = contentRect.top;
+
+    const constantXOffset = 5;  // Your X offset
+    const constantYOffset = 127;  // Your Y offset
+
+    // Apply the same final coordinate adjustments
+    const finalX = (adjustedX - offsetX - constantXOffset) + window.scrollX;
+    const finalY = (adjustedY - offsetY - constantYOffset) + window.scrollY;
+
+    // Call the original detectWordAtCoordinates using the corrected coordinates
+    return detectWordAtCoordinates(finalX, finalY);
+}
+
+// Function to detect the word at the current (adjusted) gaze coordinates
 function detectWordAtCoordinates(x, y) {
     const range = document.caretRangeFromPoint(x, y);
     let closestWord = 'blank';
@@ -115,7 +161,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'detectWord') {
         if (latestX !== null && latestY !== null) {
             console.log(`Detecting word at (${latestX}, ${latestY})`);
-            const detectedWord = detectWordAtCoordinates(latestX, latestY);
+            const detectedWord = detectWordAtRedDot(latestX, latestY);  // Now using adjusted coordinates
             const context = getContextFromDOM(latestX, latestY);  // Get context
             sendWordToBackendViaSocket(detectedWord, context);  // Use WebSocket instead of fetch
             sendResponse({ word: detectedWord });
