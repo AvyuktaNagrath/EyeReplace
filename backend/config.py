@@ -1,2 +1,2 @@
-BEAM_PORT = 12010  # Port for Beam tracker
-BACKEND_PORT = 5000  # Flask backend port
+BEAM_PORT = 12010  # found in disc logs
+BACKEND_PORT = 5000

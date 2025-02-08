@@ -10,14 +10,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Flask app and Socket.IO
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Initialize the OpenAI client with the API key
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-# Function to run the eye tracker and emit gaze data
 def run_tracker():
     tracker = TrackerClient(base_communication_port=BEAM_PORT, hostname="127.0.0.1")
 
@@ -32,14 +29,12 @@ def run_tracker():
                 }
                 socketio.emit('screen_gaze_data', screen_gaze_data)
                 print(f"Sent Gaze on Screen: {screen_gaze_data}")
-            time.sleep(1/20)  # Emit data at 20Hz
+            time.sleep(1/20)
         else:
             print("No connection with tracker server")
             time.sleep(2)
 
-# === Synonym replacement logic ===
 
-# Function to get a simpler synonym using OpenAI API
 def get_simpler_word(word, context):
     try:
         response = client.chat.completions.create(
@@ -59,7 +54,6 @@ def get_simpler_word(word, context):
         print(f"Error querying OpenAI API: {e}")
         return None
 
-# Function to get a translation (ESL mode) using OpenAI API
 def get_translated_word(word, context, target_language="Korean"):
     try:
         response = client.chat.completions.create(
@@ -79,7 +73,6 @@ def get_translated_word(word, context, target_language="Korean"):
         print(f"Error querying OpenAI API: {e}")
         return None
 
-# Function to get a dyslexia-friendly synonym (equal difficulty) using OpenAI API
 def get_dyslexia_synonym(word, context):
     try:
         response = client.chat.completions.create(
@@ -99,7 +92,6 @@ def get_dyslexia_synonym(word, context):
         print(f"Error querying OpenAI API: {e}")
         return None
 
-# Function to separate the word from its punctuation
 def separate_word_punctuation(word):
     suffix_punct = ""
     while word and word[-1] in string.punctuation:
@@ -113,20 +105,20 @@ def separate_word_punctuation(word):
 
     return word, prefix_punct, suffix_punct
 
-# Function to replace word with simpler synonym or translation based on mode
+
 def replace_word_based_on_mode(word, context, mode, language='Spanish', is_first_word=False):
     original_word = word
     word, prefix_punct, suffix_punct = separate_word_punctuation(word)
 
-    # Choose the function based on the mode
+
     if mode == "simplify":
         new_word = get_simpler_word(word, context)
     elif mode == "esl":
-        new_word = get_translated_word(word, context, language)  # Pass the selected language
+        new_word = get_translated_word(word, context, language)
     elif mode == "dyslexia":
         new_word = get_dyslexia_synonym(word, context)
     else:
-        new_word = word  # No change if mode is unrecognized
+        new_word = word
 
     if new_word and new_word.lower() != word.lower():
         if is_first_word or original_word[0].isupper():
@@ -135,17 +127,16 @@ def replace_word_based_on_mode(word, context, mode, language='Spanish', is_first
 
     return original_word
 
-# Handle WebSocket for word detection
+
 @socketio.on('word_detection')
 def handle_word_detection(data):
     word = data['word']
     context = data['context']
-    mode = data.get('mode', 'simplify')  # Default mode is simplify if not provided
-    language = data.get('language', 'Spanish')  # Default language is Spanish if not provided
+    mode = data.get('mode', 'simplify')
+    language = data.get('language', 'Spanish')
 
     print(f"Received word: {word}, Context: {context}, Mode: {mode}, Language: {language}")
 
-    # Pass the selected language to replace_word_based_on_mode for ESL mode
     simpler_word = replace_word_based_on_mode(word, context, mode, language)
 
     if simpler_word:
@@ -154,17 +145,17 @@ def handle_word_detection(data):
         emit('synonym_response', {'originalWord': word, 'simpler_word': word})
     
 
-# Start the eye tracker in the background when the app starts
+
 @socketio.on('connect')
 def on_connect():
     print('Client connected')
 
-# Route to check if the server is running
+
 @app.route('/')
 def index():
     return "Eye Tracker WebSocket Server is running."
 
-# Main entry point to run the Flask-SocketIO server
+
 if __name__ == "__main__":
-    socketio.start_background_task(run_tracker)  # Start the eye tracker in the background
+    socketio.start_background_task(run_tracker) 
     socketio.run(app, host="0.0.0.0", port=BACKEND_PORT)
